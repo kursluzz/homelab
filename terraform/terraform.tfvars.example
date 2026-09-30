@@ -1,0 +1,43 @@
+# The one inventory file: every host, address and VM size lives here.
+# Copy to terraform.tfvars and edit. terraform.tfvars is committed on purpose
+# (private LAN addresses are harmless) - the Proxmox API token is NOT kept here,
+# it comes from the PROXMOX_VE_API_TOKEN environment variable.
+
+proxmox_endpoint = "https://192.168.1.11:8006/" # any host of the Proxmox cluster
+
+cluster_name     = "homelab"
+cluster_endpoint = "192.168.1.50" # virtual IP shared by the control-plane nodes
+gateway          = "192.168.1.1"
+
+# Physical Proxmox hosts. Leave ~2 GB of RAM per host for Proxmox itself.
+# Both hosts: i5-7500, 4 cores / 4 threads, no discrete GPU. pve-1 = triton.
+hosts = {
+  pve-1 = { ram_gb = 64, threads = 4 }
+  pve-2 = { ram_gb = 16, threads = 4 }
+}
+
+# pve-1 storage: "local-lvm" = 512 GB NVMe (Proxmox + small disks),
+# "ssd" = 1 TB SATA SSD (worker disks), "hdd" = 8 TB HDD (S3 / backups).
+
+# Always-on machine outside the lab, running corosync-qnetd as the third
+# Proxmox quorum vote. Not managed by Terraform.
+qdevice_ip = "192.168.1.10"
+
+# Kubernetes nodes (VMs). With two hosts, pve-1 carries 2 of the 3
+# control-plane nodes: etcd survives losing pve-2, not pve-1.
+# vCPUs are overcommitted on purpose (16 vCPUs on 4 threads on pve-1); pod
+# requests/limits, not VM cores, are what keep workloads apart.
+nodes = {
+  cp-1 = { host = "pve-1", role = "controlplane", ip = "192.168.1.51", cores = 2, ram_gb = 4, disk_gb = 40, datastore = "local-lvm" }
+  cp-2 = { host = "pve-1", role = "controlplane", ip = "192.168.1.52", cores = 2, ram_gb = 4, disk_gb = 40, datastore = "local-lvm" }
+  cp-3 = { host = "pve-2", role = "controlplane", ip = "192.168.1.53", cores = 2, ram_gb = 4, disk_gb = 40 }
+
+  w-1 = { host = "pve-1", role = "worker", ip = "192.168.1.61", cores = 4, ram_gb = 18, disk_gb = 150, datastore = "ssd" }
+  w-2 = { host = "pve-1", role = "worker", ip = "192.168.1.62", cores = 4, ram_gb = 18, disk_gb = 150, datastore = "ssd" }
+  w-3 = { host = "pve-2", role = "worker", ip = "192.168.1.63", cores = 2, ram_gb = 9, disk_gb = 80 }
+}
+
+# LLM inference (Ollama) in an LXC container on pve-1, outside Kubernetes.
+# pve-1 budget: 2 (Proxmox) + 8 (cp) + 36 (workers) + 16 (llm) = 62 GB.
+# For large models, stop w-1/w-2 and raise ram_gb.
+llm = { host = "pve-1", ip = "192.168.1.70", cores = 4, ram_gb = 16, disk_gb = 200, datastore = "local-lvm" }

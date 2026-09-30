@@ -1,0 +1,6 @@
+# Encrypt Kubernetes Secret data with age. Replace the recipient with your own
+# public key (age-keygen -o key.txt); keep the private key out of the repo.
+creation_rules:
+  - path_regex: .*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1REPLACE_WITH_YOUR_PUBLIC_KEY
