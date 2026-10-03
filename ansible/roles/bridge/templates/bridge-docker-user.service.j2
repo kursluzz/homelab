@@ -1,0 +1,17 @@
+# Managed by Ansible (roles/bridge).
+# Docker sets the iptables FORWARD policy to DROP; with br_netfilter loaded that
+# also drops bridged traffic between the LAN and the VMs on {{ bridge }}.
+# DOCKER-USER is evaluated before Docker's own rules and is kept across its restarts.
+[Unit]
+Description=Accept bridged VM traffic on {{ bridge }} in Docker's FORWARD chain
+After=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/bin/sh -c 'iptables -C DOCKER-USER -i {{ bridge }} -o {{ bridge }} -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER -i {{ bridge }} -o {{ bridge }} -j ACCEPT'
+ExecStop=-/usr/sbin/iptables -D DOCKER-USER -i {{ bridge }} -o {{ bridge }} -j ACCEPT
+
+[Install]
+WantedBy=docker.service

@@ -1,0 +1,88 @@
+# Moves the host's address from the NIC to a LAN bridge, so VMs attached to the
+# bridge get their own LAN addresses. A wrong network config cuts off SSH and
+# persists across reboots, so the switch is guarded by a timed rollback.
+
+- name: Check whether the bridge config is already in place
+  ansible.builtin.template:
+    src: netplan.yaml.j2
+    dest: /etc/netplan/10-bridge.yaml
+    mode: "0600"
+  check_mode: true
+  register: bridge_target
+
+- name: List the current netplan files
+  ansible.builtin.find:
+    paths: /etc/netplan
+    patterns: "*.yaml"
+  register: bridge_netplan_files
+
+- name: Switch the host to the bridge
+  when: >-
+    bridge_target.changed or
+    (bridge_netplan_files.files | map(attribute='path') | list) != ['/etc/netplan/10-bridge.yaml']
+  block:
+    - name: Back up the current netplan config
+      ansible.builtin.shell: rm -rf /root/netplan.bak && cp -a /etc/netplan /root/netplan.bak
+      changed_when: true
+
+    - name: Clear a rollback left over from an earlier run
+      ansible.builtin.shell: |
+        systemctl stop netplan-rollback.timer netplan-rollback.service 2>/dev/null
+        systemctl reset-failed netplan-rollback.service netplan-rollback.timer 2>/dev/null
+        true
+      changed_when: false
+
+    - name: Arm the rollback (restores the backup in {{ bridge_rollback_minutes }} min unless cancelled)
+      ansible.builtin.command: >-
+        systemd-run --unit=netplan-rollback --on-active={{ bridge_rollback_minutes }}min
+        /bin/sh -c 'rm -f /etc/netplan/*.yaml; cp -a /root/netplan.bak/. /etc/netplan/; netplan apply'
+      changed_when: true
+
+    - name: Remove the old netplan files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ bridge_netplan_files.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+      when: item.path != '/etc/netplan/10-bridge.yaml'
+
+    - name: Write the bridge config
+      ansible.builtin.template:
+        src: netplan.yaml.j2
+        dest: /etc/netplan/10-bridge.yaml
+        mode: "0600"
+
+    - name: Apply it (detached, the connection may drop while the address moves)
+      ansible.builtin.command: netplan apply
+      async: 60
+      poll: 0
+      changed_when: true
+
+    - name: Wait until the host is reachable again
+      ansible.builtin.wait_for_connection:
+        delay: 10
+        timeout: 180
+
+    - name: Check that the bridge holds the host address
+      ansible.builtin.command: ip -4 -o addr show dev {{ bridge }}
+      register: bridge_addr
+      changed_when: false
+      failed_when: ansible_host not in bridge_addr.stdout
+
+    - name: Cancel the rollback
+      ansible.builtin.command: systemctl stop netplan-rollback.timer
+      changed_when: true
+
+- name: Install the Docker firewall rule for the bridge
+  ansible.builtin.template:
+    src: bridge-docker-user.service.j2
+    dest: /etc/systemd/system/bridge-docker-user.service
+    mode: "0644"
+
+- name: Enable the Docker firewall rule
+  ansible.builtin.systemd_service:
+    name: bridge-docker-user.service
+    enabled: true
+    state: started
+    daemon_reload: true

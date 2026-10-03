@@ -1,0 +1,3 @@
+# Minutes before a network change is rolled back unless the host is reachable
+# again and the bridge holds its address.
+bridge_rollback_minutes: 10

@@ -1,0 +1,18 @@
+# Managed by Ansible (roles/bridge). {{ nic }} is a port of {{ bridge }}; the host
+# and its VMs get their addresses on the bridge.
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    {{ nic }}:
+      dhcp4: false # Wake-on-LAN is left as the NIC has it; it already works
+  bridges:
+    {{ bridge }}:
+      interfaces: [{{ nic }}]
+      macaddress: "{{ mac }}" # same MAC as the NIC, so the DHCP reservation still matches
+      dhcp4: true
+      parameters:
+        # One uplink, so no loops for STP to break. With STP on, every new VM
+        # port waits ~30 s before forwarding, long enough to fail DHCP at boot.
+        stp: false
+        forward-delay: 0

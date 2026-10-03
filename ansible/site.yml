@@ -7,3 +7,12 @@
   roles:
     - docker
     - uv
+
+# A network change; one host at a time, and a failure stops the run before the
+# next host.
+- name: LAN bridge for the VMs
+  hosts: all
+  become: true
+  serial: 1
+  roles:
+    - bridge
