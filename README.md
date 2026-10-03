@@ -12,14 +12,15 @@ else from git.
 
 ## Hardware
 
-| Host   | CPU              | RAM   | Role                                                      |
-|--------|------------------|-------|-----------------------------------------------------------|
-| pve-1  | Intel i5-7500 (4C/4T) | 64 GB | Proxmox: 2 control-plane nodes, 2 heavy workers, LLM container |
-| pve-2  | Intel i5-7500 (4C/4T) | 16 GB | Proxmox: 1 control-plane node, 1 light worker             |
-| home server | Intel i5 8th gen | 16 GB | Not part of the lab. Always on, runs the Proxmox QDevice (quorum tie-breaker) |
+| Host  | CPU                   | RAM   | Role                                                                 |
+|-------|-----------------------|-------|----------------------------------------------------------------------|
+| home  | Intel i5 8th gen      | 16 GB | Always on. Management point (Terraform, Wake-on-LAN), 1 control-plane node |
+| lab-1 | Intel i5-7500 (4C/4T) | 64 GB | 1 control-plane node, 2 heavy workers, Ollama on the host            |
+| lab-2 | Intel i5-7500 (4C/4T) | 16 GB | 1 control-plane node, 1 light worker                                 |
 
-The two Proxmox hosts can be powered off when the lab isn't in use; the home
-server keeps running independently. 1 GbE network.
+All three run Ubuntu Server with Incus; nodes are Talos VMs on a LAN bridge.
+lab-1 and lab-2 are powered on over Wake-on-LAN when the lab is in use; the
+home server's own services do not depend on them. 1 GbE network.
 
 Host names, IPs and the VM split live in one place,
 [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example). Nothing
@@ -29,9 +30,9 @@ else in the repo hardcodes an address, so if you fork this, you only edit that f
 
 | Layer            | Tool                                                        | Why (see [ADRs](docs/adr/)) |
 |------------------|-------------------------------------------------------------|-----------------------------|
-| Hypervisor       | Proxmox VE (2-host cluster + QDevice)                       | Split 2 machines into 6 k8s nodes you can kill and add |
-| LLM inference    | Ollama in an LXC container on pve-1                         | Near-native CPU inference, sized up by stopping worker VMs |
-| Provisioning     | Terraform (`bpg/proxmox`, `siderolabs/talos`)               | Same workflow as cloud IaC |
+| Hypervisor       | Incus on Ubuntu Server (3 standalone hosts)                 | VMs on the existing hosts without a reinstall; one control-plane node per host |
+| LLM inference    | Ollama on lab-1's host, started on demand                   | Near-native CPU inference, sized up by stopping worker VMs |
+| Provisioning     | Terraform (`lxc/incus`, `siderolabs/talos`)                 | Same workflow as cloud IaC |
 | Kubernetes       | Talos Linux                                                 | Immutable, API-only, no drift |
 | GitOps           | Argo CD (app-of-apps)                                       | Install by pushing to git |
 | Network          | Cilium (CNI, Hubble, Gateway API, L2 LB IPs)                | One component instead of flannel + MetalLB + ingress |
@@ -49,7 +50,7 @@ else in the repo hardcodes an address, so if you fork this, you only edit that f
 ## Repo layout
 
 ```
-terraform/            Proxmox VMs + Talos bootstrap
+terraform/            Incus VMs + Talos bootstrap
 talos/                Talos machine config patches
 kubernetes/
   bootstrap/          Argo CD + the root app-of-apps
@@ -61,8 +62,8 @@ docs/adr/             architecture decision records
 
 ## Roadmap
 
-- [ ] 1. Proxmox cluster on pve-1 + pve-2, QDevice on the home server
-- [ ] 2. Terraform + Talos: 3 control-plane nodes, 3 workers; Ollama LXC container
+- [ ] 1. Incus on the three Ubuntu hosts, LAN bridge, Wake-on-LAN from the home server
+- [ ] 2. Terraform + Talos: 3 control-plane nodes (one per host), 3 workers
 - [ ] 3. Cilium, Argo CD, cert-manager, storage, observability
 - [ ] 4. CloudNativePG, Strimzi, ClickHouse; Debezium CDC pipeline Postgres → Kafka → ClickHouse
 - [ ] 5. Experiments: KEDA on Kafka lag, k6 load tests, Chaos Mesh failover
@@ -73,6 +74,23 @@ docs/adr/             architecture decision records
 
 Each experiment in [`experiments/`](experiments/) states a hypothesis, the setup,
 how it was measured, and the result, with numbers and dashboard screenshots.
+
+## Local credentials
+
+Nothing secret is committed. Running the platform needs these local files, all
+gitignored:
+
+| File | Created by | Used by |
+|------|------------|---------|
+| `.env` | Copied from [`.env.example`](.env.example) | Shell, via [direnv](https://direnv.net/) (`dotenv`) or `set -a; . ./.env` |
+| `homelab.age.key` | `age-keygen -o homelab.age.key`; the public key goes into `.sops.yaml` | SOPS, to decrypt `*.sops.yaml` |
+| `terraform/terraform.tfstate` | `terraform apply` | Terraform. Holds the Talos cluster CA and keys |
+| `talosconfig`, `kubeconfig` | Terraform outputs (roadmap step 2) | `talosctl`, `kubectl` |
+| `~/.config/incus/client.crt`, `client.key` | `incus remote add <host> <trust token>` | Incus CLI and Terraform |
+
+Losing the age key makes every committed secret unreadable, so it is backed up
+outside the repo. The Incus client certificate is re-issued with a new trust
+token; the rest is regenerated by rebuilding the cluster.
 
 ## Rules for this repo
 

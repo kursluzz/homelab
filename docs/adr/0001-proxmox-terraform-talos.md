@@ -1,6 +1,6 @@
 # 0001. Proxmox + Terraform + Talos as the base layer
 
-- Status: accepted
+- Status: superseded by [0002](0002-incus-on-existing-ubuntu-hosts.md)
 - Date: 2026-09-30
 
 ## Context

@@ -6,9 +6,9 @@ Guidance for Claude Code when working in this repo.
 
 A self-hosted Kubernetes platform on home PCs: it hosts my projects and runs a
 streaming/analytics data stack. Everything is declarative. Terraform creates
-Proxmox VMs and bootstraps Talos Kubernetes, and Argo CD installs everything
-else from `kubernetes/`. See `README.md` for the stack and `docs/adr/` for the
-reasoning behind each choice.
+Incus VMs on the existing Ubuntu hosts and bootstraps Talos Kubernetes, and
+Argo CD installs everything else from `kubernetes/`. See `README.md` for the
+stack and `docs/adr/` for the reasoning behind each choice.
 
 ## Rules
 
@@ -24,8 +24,9 @@ reasoning behind each choice.
 - **Current industry standards.** Pick the tool the industry uses today, not the
   familiar one.
 - **Secrets.** Never commit a plaintext secret. Kubernetes secrets are
-  `*.sops.yaml` files encrypted with age (see `.sops.yaml`). The Proxmox API token
-  comes from `PROXMOX_VE_API_TOKEN`. `gitleaks` runs as a pre-commit hook.
+  `*.sops.yaml` files encrypted with age (see `.sops.yaml`). Terraform reaches
+  Incus with the client certificate in `~/.config/incus`, never committed.
+  `gitleaks` runs as a pre-commit hook.
 - **Public data only.** Never add data, configs or credentials from any employer.
   Use public datasets (ClickHouse sample datasets, NYC taxi, GitHub events).
 - **Resource requests and limits on everything.** The hardware is small, and
