@@ -2,5 +2,15 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "argocd": { "fileMatch": ["^kubernetes/.+\\.ya?ml$"] },
-  "pre-commit": { "enabled": true }
+  "pre-commit": { "enabled": true },
+  "customManagers": [
+    {
+      "description": "Versions in Ansible vars marked with a '# renovate:' comment",
+      "customType": "regex",
+      "fileMatch": ["^ansible/.+\\.ya?ml$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\w+: \"?(?<currentValue>[^\"\\s]+)\"?"
+      ]
+    }
+  ]
 }

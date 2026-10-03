@@ -70,9 +70,9 @@ with `MemoryMax`.
 - The home server is now part of the platform. Failure tests target its VMs,
   never the host. etcd is sensitive to fsync latency, so the VM disks go on
   NVMe, not on the HDDs that hold the media library.
-- Docker (Immich on the home server) loads `br_netfilter` and sets the iptables
-  `FORWARD` policy to `DROP`, which drops traffic between bridged VMs. The home
-  server needs a `DOCKER-USER` rule that accepts traffic on the LAN bridge.
+- Docker (installed on every host by Ansible) loads `br_netfilter` and sets the
+  iptables `FORWARD` policy to `DROP`, which drops traffic between bridged VMs.
+  Every host needs a `DOCKER-USER` rule that accepts traffic on the LAN bridge.
 - Moving a NIC into a bridge over SSH can cut off the session. The netplan change
   is applied with `netplan try`, which reverts unless confirmed. The bridge keeps
   the NIC's MAC address, so the router's DHCP reservation still matches.

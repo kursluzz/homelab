@@ -65,7 +65,7 @@ docs/adr/             architecture decision records
 
 ## Roadmap
 
-- [ ] 1. Ansible host setup: LAN bridge, Incus, Docker firewall rule; Wake-on-LAN from the home server
+- [ ] 1. Ansible host setup: Docker, uv, LAN bridge, Incus; Wake-on-LAN from the home server
 - [ ] 2. Terraform + Talos: 3 control-plane nodes (one per host), 4 workers
 - [ ] 3. Cilium, Argo CD, cert-manager, storage, observability
 - [ ] 4. CloudNativePG, Strimzi, ClickHouse; Debezium CDC pipeline Postgres → Kafka → ClickHouse

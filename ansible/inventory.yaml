@@ -3,6 +3,11 @@
 # to these hosts by name. Host names and the bridge name must match in both files.
 all:
   vars:
+    # Ubuntu 26.04 ships sudo-rs as sudo. It wraps a custom prompt in its own
+    # text ("[sudo: <prompt>] Password:"), so Ansible never sees its marker and
+    # times out. sudo.ws is the classic sudo, installed alongside.
+    ansible_become_exe: sudo.ws
+    ansible_python_interpreter: /usr/bin/python3
     nic: enp0s31f6 # onboard NIC on every host; Wake-on-LAN stays on it
     bridge: br0    # LAN bridge the VMs attach to; the bridge keeps the NIC's MAC
   children:

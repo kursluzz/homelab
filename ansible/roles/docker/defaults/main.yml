@@ -1,0 +1,4 @@
+# Users allowed to run docker without sudo (default: the user Ansible connects
+# as). Membership in the docker group is root-equivalent on the host.
+docker_users:
+  - "{{ ansible_facts.env.SUDO_USER }}"

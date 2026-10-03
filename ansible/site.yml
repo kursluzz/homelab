@@ -1,0 +1,9 @@
+# Configures every host. Run from ansible/ (asks for the sudo password):
+#   ansible-playbook site.yml -l orion   # one host
+#   ansible-playbook site.yml            # all hosts
+- name: Base tools on every host
+  hosts: all
+  become: true
+  roles:
+    - docker
+    - uv

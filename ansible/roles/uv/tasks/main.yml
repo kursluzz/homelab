@@ -1,0 +1,31 @@
+# uv and uvx as static binaries in /usr/local/bin, at the pinned version.
+# Renovate bumps uv_version; the next run replaces the binaries.
+- name: Read the installed uv version
+  ansible.builtin.command: /usr/local/bin/uv --version
+  register: uv_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install uv {{ uv_version }}
+  when: uv_installed.stdout is not match('uv ' ~ (uv_version | regex_escape) ~ '( |$)')
+  vars:
+    uv_url: https://github.com/astral-sh/uv/releases/download/{{ uv_version }}/uv-x86_64-unknown-linux-gnu.tar.gz
+  block:
+    - name: Download the uv release and verify its checksum
+      ansible.builtin.get_url:
+        url: "{{ uv_url }}"
+        checksum: sha256:{{ uv_url }}.sha256
+        dest: /tmp/uv.tar.gz
+        mode: "0644"
+
+    - name: Unpack uv and uvx into /usr/local/bin
+      ansible.builtin.unarchive:
+        src: /tmp/uv.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts: [--strip-components=1]
+
+    - name: Remove the downloaded archive
+      ansible.builtin.file:
+        path: /tmp/uv.tar.gz
+        state: absent
