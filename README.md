@@ -44,6 +44,7 @@ else in the repo hardcodes an address, so if you fork this, you only edit that f
 | Big data         | Apache Iceberg, Trino, Spark Operator, Flink Operator       | |
 | Observability    | kube-prometheus-stack, Loki, Tempo, OpenTelemetry Collector | |
 | Scaling / tests  | KEDA, k6 (+ k6-operator), Chaos Mesh                        | |
+| Jobs / workflows | RabbitMQ (cluster operator), Celery, DBOS, Temporal, Argo Workflows (planned) | Long-running staged batch jobs; compared in [experiments](experiments/README.md) |
 
 ## Repo layout
 
@@ -66,6 +67,7 @@ docs/adr/             architecture decision records
 - [ ] 4. CloudNativePG, Strimzi, ClickHouse; Debezium CDC pipeline Postgres → Kafka → ClickHouse
 - [ ] 5. Experiments: KEDA on Kafka lag, k6 load tests, Chaos Mesh failover
 - [ ] 6. Garage S3, Iceberg, Trino, Spark / Flink
+- [ ] 7. Staged media-processing workload: resumable uploads to Garage, queue per stage, KEDA, Temporal / Argo Workflows ([planned experiments](experiments/README.md#planned-staged-media-processing-workload))
 
 ## Experiments
 
