@@ -9,11 +9,11 @@
 All three machines already run Ubuntu Server with services that must keep
 running:
 
-| Host  | RAM   | Existing services                    | Availability                |
-|-------|-------|--------------------------------------|-----------------------------|
-| home  | 16 GB | Immich, torrent                      | Always on                   |
-| lab-1 | 64 GB | Immich backup server, Ollama         | Powered on for experiments  |
-| lab-2 | 16 GB | None                                 | Powered on for experiments  |
+| Host  | CPU            | RAM   | Existing services                                   | Availability               |
+|-------|----------------|-------|-----------------------------------------------------|----------------------------|
+| home  | i5-7500 4C/4T  | 20 GB | Immich (Docker), file sharing, torrent, game server | Always on                  |
+| lab-1 | i5-7500 4C/4T  | 64 GB | Ollama, game server                                 | Powered on for experiments |
+| lab-2 | i5-7400 4C/4T  | 16 GB | None                                                | Powered on for experiments |
 
 Proxmox VE installs only from its own ISO or on top of Debian, so ADR 0001
 means reinstalling the hosts and moving these services. The machines run
@@ -50,11 +50,11 @@ registers each host as an Incus remote. `lxc/incus` creates the VMs, and
 `siderolabs/talos` bootstraps Kubernetes on them. Each host's NIC is in a Linux
 bridge, so VMs get LAN addresses and can reach each other across hosts.
 
-Kubernetes: 3 control-plane nodes, one per host, and 3 workers (2 on lab-1, 1 on
-lab-2). The home server is the management point. It runs Terraform, `talosctl`
-and `kubectl`, and sends Wake-on-LAN to power the lab hosts on. It hosts only a
-control-plane VM, with hard CPU and RAM limits and the default control-plane
-`NoSchedule` taint, and no data workloads.
+Kubernetes: 3 control-plane nodes, one per host, and 4 workers (2 on lab-1, 1 on
+lab-2, 1 on home). The home server is the management point. It runs Terraform,
+`talosctl` and `kubectl`, and sends Wake-on-LAN to power the lab hosts on. Its
+VMs are capped at 2 vCPUs each and 10 GB of RAM in total, which leaves headroom
+for its own services.
 
 Ollama stays a systemd service on lab-1's host OS, started on demand and capped
 with `MemoryMax`.
@@ -65,18 +65,19 @@ with `MemoryMax`.
   goes through its API, so no physical access is needed.
 - etcd survives the loss of any one host, which ADR 0001 could not.
   With the lab hosts off, the home server's control-plane node alone has no
-  quorum and the cluster is down by design. It is stopped together with the lab
-  to return its RAM to the home server.
-- The home server is now part of the platform. Failure tests target the
-  control-plane VM, never the host. etcd is sensitive to fsync latency, so
-  the VM disk must not share a slow disk with Immich's library.
-- Docker (Immich on home and lab-1) loads `br_netfilter` and sets the iptables
-  `FORWARD` policy to `DROP`, which drops traffic between bridged VMs. Each such
-  host needs a `DOCKER-USER` rule that accepts traffic on the LAN bridge.
+  quorum and the cluster is down by design. The home server's VMs are stopped
+  together with the lab to return their RAM to it.
+- The home server is now part of the platform. Failure tests target its VMs,
+  never the host. etcd is sensitive to fsync latency, so the VM disks go on
+  NVMe, not on the HDDs that hold the media library.
+- Docker (Immich on the home server) loads `br_netfilter` and sets the iptables
+  `FORWARD` policy to `DROP`, which drops traffic between bridged VMs. The home
+  server needs a `DOCKER-USER` rule that accepts traffic on the LAN bridge.
 - Moving a NIC into a bridge over SSH can cut off the session. The netplan change
-  is applied with `netplan try`, which reverts unless confirmed.
-- Without a free disk, storage pools use the `dir` driver on the existing
-  filesystems, so instance snapshots are full copies. Nodes are rebuilt from git,
+  is applied with `netplan try`, which reverts unless confirmed. The bridge keeps
+  the NIC's MAC address, so the router's DHCP reservation still matches.
+- Storage pools use the `dir` driver on the existing ext4 filesystems, so no disk
+  is repartitioned and instance snapshots are full copies. Nodes are rebuilt from git,
   not restored from snapshots.
 - Incus VMs default to UEFI Secure Boot. Talos nodes either boot the Talos
   SecureBoot image or set `security.secureboot=false`.

@@ -14,17 +14,18 @@ else from git.
 
 | Host  | CPU                   | RAM   | Role                                                                 |
 |-------|-----------------------|-------|----------------------------------------------------------------------|
-| home  | Intel i5 8th gen      | 16 GB | Always on. Management point (Terraform, Wake-on-LAN), 1 control-plane node |
+| home  | Intel i5-7500 (4C/4T) | 20 GB | Always on. Management point (Terraform, Wake-on-LAN), 1 control-plane node, 1 small worker |
 | lab-1 | Intel i5-7500 (4C/4T) | 64 GB | 1 control-plane node, 2 heavy workers, Ollama on the host            |
-| lab-2 | Intel i5-7500 (4C/4T) | 16 GB | 1 control-plane node, 1 light worker                                 |
+| lab-2 | Intel i5-7400 (4C/4T) | 16 GB | 1 control-plane node, 1 worker                                       |
 
 All three run Ubuntu Server with Incus; nodes are Talos VMs on a LAN bridge.
 lab-1 and lab-2 are powered on over Wake-on-LAN when the lab is in use; the
 home server's own services do not depend on them. 1 GbE network.
 
-Host names, IPs and the VM split live in one place,
-[`terraform/terraform.tfvars`](terraform/terraform.tfvars.example). Nothing
-else in the repo hardcodes an address, so if you fork this, you only edit that file.
+Physical hosts live in [`ansible/inventory.yaml`](ansible/inventory.yaml) and
+the VM split in [`terraform/terraform.tfvars`](terraform/terraform.tfvars.example).
+Nothing else in the repo hardcodes an address, so if you fork this, you only
+edit those two files.
 
 ## Stack
 
@@ -32,6 +33,7 @@ else in the repo hardcodes an address, so if you fork this, you only edit that f
 |------------------|-------------------------------------------------------------|-----------------------------|
 | Hypervisor       | Incus on Ubuntu Server (3 standalone hosts)                 | VMs on the existing hosts without a reinstall; one control-plane node per host |
 | LLM inference    | Ollama on lab-1's host, started on demand                   | Near-native CPU inference, sized up by stopping worker VMs |
+| Host config      | Ansible                                                     | Agentless, idempotent configuration of the existing hosts |
 | Provisioning     | Terraform (`lxc/incus`, `siderolabs/talos`)                 | Same workflow as cloud IaC |
 | Kubernetes       | Talos Linux                                                 | Immutable, API-only, no drift |
 | GitOps           | Argo CD (app-of-apps)                                       | Install by pushing to git |
@@ -50,6 +52,7 @@ else in the repo hardcodes an address, so if you fork this, you only edit that f
 ## Repo layout
 
 ```
+ansible/              host configuration: LAN bridge, Incus, Wake-on-LAN
 terraform/            Incus VMs + Talos bootstrap
 talos/                Talos machine config patches
 kubernetes/
@@ -62,8 +65,8 @@ docs/adr/             architecture decision records
 
 ## Roadmap
 
-- [ ] 1. Incus on the three Ubuntu hosts, LAN bridge, Wake-on-LAN from the home server
-- [ ] 2. Terraform + Talos: 3 control-plane nodes (one per host), 3 workers
+- [ ] 1. Ansible host setup: LAN bridge, Incus, Docker firewall rule; Wake-on-LAN from the home server
+- [ ] 2. Terraform + Talos: 3 control-plane nodes (one per host), 4 workers
 - [ ] 3. Cilium, Argo CD, cert-manager, storage, observability
 - [ ] 4. CloudNativePG, Strimzi, ClickHouse; Debezium CDC pipeline Postgres → Kafka → ClickHouse
 - [ ] 5. Experiments: KEDA on Kafka lag, k6 load tests, Chaos Mesh failover

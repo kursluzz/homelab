@@ -1,0 +1,17 @@
+# Physical hosts: the only place their addresses and MACs live.
+# VMs, node addresses and sizes are in terraform/terraform.tfvars, which refers
+# to these hosts by name. Host names and the bridge name must match in both files.
+all:
+  vars:
+    nic: enp0s31f6 # onboard NIC on every host; Wake-on-LAN stays on it
+    bridge: br0    # LAN bridge the VMs attach to; the bridge keeps the NIC's MAC
+  children:
+    # Always on: personal services, management point (Terraform, talosctl, Wake-on-LAN).
+    home:
+      hosts:
+        saturn: { ansible_host: 192.168.0.21, mac: "50:9a:4c:2a:9a:07" }
+    # Powered on over Wake-on-LAN for experiments.
+    lab:
+      hosts:
+        triton: { ansible_host: 192.168.0.22, mac: "30:9c:23:77:77:85" }
+        orion: { ansible_host: 192.168.0.23, mac: "30:9c:23:77:59:58" }

@@ -12,8 +12,11 @@ stack and `docs/adr/` for the reasoning behind each choice.
 
 ## Rules
 
-- **One inventory file.** Hosts, IPs and VM sizes live only in
-  `terraform/terraform.tfvars`. Never hardcode an address or node name anywhere else.
+- **Two inventory files, split by layer.** Physical hosts (addresses, MACs,
+  roles) live only in `ansible/inventory.yaml`; VMs, node addresses and sizes
+  live only in `terraform/terraform.tfvars`, which refers to hosts by name. Host
+  names and the bridge name must match in both. Never hardcode an address or
+  node name anywhere else.
 - **GitOps only.** Cluster state changes by committing to `kubernetes/` and letting
   Argo CD sync. `kubectl apply` / `helm install` are for debugging and are never
   the way something gets installed.

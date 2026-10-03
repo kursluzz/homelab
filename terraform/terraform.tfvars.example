@@ -1,47 +1,36 @@
-# The one inventory file: every host, address and VM size lives here.
+# VM inventory: every Kubernetes node, its address and size lives here.
+# Physical hosts live in ansible/inventory.yaml; this file refers to them by name.
 # Copy to terraform.tfvars and edit. terraform.tfvars is committed on purpose
-# (private LAN addresses are harmless) - the Incus client certificate is NOT
-# kept here, it stays in ~/.config/incus.
+# (private LAN addresses are harmless). Credentials are not kept here; see
+# "Local credentials" in README.md.
 
 cluster_name     = "homelab"
 cluster_endpoint = "192.168.1.50" # virtual IP shared by the control-plane nodes
 gateway          = "192.168.1.1"
-bridge           = "br0"          # LAN bridge on every host; VMs get LAN addresses
+bridge           = "br0" # LAN bridge on every host; VMs get LAN addresses
 
-# Physical hosts: Ubuntu Server + Incus, standalone (not an Incus cluster).
-# Each is an Incus remote at https://<ip>:8443.
-#   home:  i5 8th gen, always on, runs Immich + torrent. Management point.
-#   lab-1: i5-7500 4C/4T, no GPU, = triton. Immich backup server, Ollama.
-#   lab-2: i5-7500 4C/4T, no GPU.
-# lab-1 and lab-2 are powered on over Wake-on-LAN for experiments.
+# Node addresses must be outside the router's DHCP pool.
+
+# Host RAM, for the budgets. Terraform reaches each host through the Incus
+# remote of the same name (~/.config/incus).
 hosts = {
-  home  = { ip = "192.168.1.10", ram_gb = 16 }
-  lab-1 = { ip = "192.168.1.11", ram_gb = 64 }
-  lab-2 = { ip = "192.168.1.12", ram_gb = 16 }
+  home  = { ram_gb = 20 }
+  lab-1 = { ram_gb = 64 }
+  lab-2 = { ram_gb = 16 }
 }
 
-# Incus storage pools ("dir" driver on the existing filesystems, no wipe).
-# lab-1: "default" = 512 GB NVMe (OS + small disks), "ssd" = 1 TB SATA SSD
-# (worker disks), 8 TB HDD left for S3 / backups.
+# Incus storage pools ("dir" driver on existing filesystems, no repartitioning).
 
 # Kubernetes nodes (VMs). One control-plane node per host: etcd survives the
-# loss of any one host. cp-3 runs on the always-on home server, so it is kept
-# small and stopped together with the lab.
-# vCPUs are overcommitted on purpose (10 vCPUs on 4 threads on lab-1); pod
-# requests/limits, not VM cores, are what keep workloads apart.
+# loss of any one host. vCPUs may be overcommitted; pod requests/limits, not
+# VM cores, are what keep workloads apart.
 nodes = {
   cp-1 = { host = "lab-1", role = "controlplane", ip = "192.168.1.51", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
   cp-2 = { host = "lab-2", role = "controlplane", ip = "192.168.1.52", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
-  cp-3 = { host = "home", role = "controlplane", ip = "192.168.1.53", cores = 2, ram_gb = 3, disk_gb = 40, pool = "default" }
+  cp-3 = { host = "home", role = "controlplane", ip = "192.168.1.53", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
 
-  w-1 = { host = "lab-1", role = "worker", ip = "192.168.1.61", cores = 4, ram_gb = 18, disk_gb = 150, pool = "ssd" }
-  w-2 = { host = "lab-1", role = "worker", ip = "192.168.1.62", cores = 4, ram_gb = 18, disk_gb = 150, pool = "ssd" }
-  w-3 = { host = "lab-2", role = "worker", ip = "192.168.1.63", cores = 2, ram_gb = 9, disk_gb = 80, pool = "default" }
+  w-1 = { host = "lab-1", role = "worker", ip = "192.168.1.61", cores = 4, ram_gb = 18, disk_gb = 150, pool = "default" }
+  w-2 = { host = "lab-1", role = "worker", ip = "192.168.1.62", cores = 4, ram_gb = 18, disk_gb = 150, pool = "default" }
+  w-3 = { host = "lab-2", role = "worker", ip = "192.168.1.63", cores = 4, ram_gb = 8, disk_gb = 100, pool = "default" }
+  w-4 = { host = "home", role = "worker", ip = "192.168.1.64", cores = 2, ram_gb = 6, disk_gb = 80, pool = "default" }
 }
-
-# RAM budgets (GB):
-#   home:  host + Immich + torrent ~12, cp-3 3.
-#   lab-1: host 2 + Immich backup 4 + cp-1 4 + workers 36 + Ollama 16 = 62.
-#          Ollama runs on the host (systemd, MemoryMax=16G), not in Incus;
-#          for large models, stop w-1/w-2 and raise MemoryMax.
-#   lab-2: host 2 + cp-2 4 + w-3 9 = 15.
