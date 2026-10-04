@@ -42,6 +42,8 @@ variable "nodes" {
     ram_gb    = number
     disk_gb   = number
     storage   = string # Incus storage pool on that host
+    # Second disk for persistent volumes (local-path); workers only.
+    data_disk_gb = optional(number, 0)
   }))
 
   validation {

@@ -45,7 +45,8 @@ hosts = {
 # saturn, so etcd keeps quorum while the lab hosts are off. Workers form two
 # node pools (label + taint): "always-on" on saturn for cluster essentials and
 # hosted projects, "lab" for the data stack and experiments.
-# storage is an Incus storage pool on that host (ansible/inventory.yaml).
+# storage is an Incus storage pool on that host (ansible/inventory.yaml); the
+# root disk and the data disk (persistent volumes, local-path) both use it.
 # vCPUs are overcommitted on purpose; pod requests/limits, not VM cores, are
 # what keep workloads apart.
 # saturn's VMs get at most 2 vCPUs each so its own services keep CPU headroom.
@@ -54,10 +55,10 @@ nodes = {
   cp-2 = { host = "saturn", role = "controlplane", ip = "192.168.0.42", cores = 2, ram_gb = 3, disk_gb = 40, storage = "default" }
   cp-3 = { host = "triton", role = "controlplane", ip = "192.168.0.43", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
 
-  w-1 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.51", cores = 4, ram_gb = 18, disk_gb = 150, storage = "ssd" }
-  w-2 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.52", cores = 4, ram_gb = 18, disk_gb = 150, storage = "ssd" }
-  w-3 = { host = "orion", role = "worker", node_pool = "lab", ip = "192.168.0.53", cores = 4, ram_gb = 12, disk_gb = 150, storage = "default" }
-  w-4 = { host = "saturn", role = "worker", node_pool = "always-on", ip = "192.168.0.54", cores = 2, ram_gb = 6, disk_gb = 100, storage = "default" }
+  w-1 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.51", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "ssd" }
+  w-2 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.52", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "ssd" }
+  w-3 = { host = "orion", role = "worker", node_pool = "lab", ip = "192.168.0.53", cores = 4, ram_gb = 12, disk_gb = 150, data_disk_gb = 300, storage = "default" }
+  w-4 = { host = "saturn", role = "worker", node_pool = "always-on", ip = "192.168.0.54", cores = 2, ram_gb = 6, disk_gb = 100, data_disk_gb = 100, storage = "default" }
 }
 
 # RAM budgets (GB):

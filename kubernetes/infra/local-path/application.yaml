@@ -1,0 +1,34 @@
+# local-path-provisioner: node-local persistent volumes for databases (they
+# replicate themselves), on each worker's data disk (terraform/talos.tf).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: local-path
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/rancher/local-path-provisioner.git
+      targetRevision: v0.0.37
+      path: deploy/chart/local-path-provisioner
+      helm:
+        releaseName: local-path
+        valueFiles:
+          - $values/kubernetes/infra/local-path/values.yaml
+    - repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: local-path-storage
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    # Helper pods mount the node's path, which Pod Security "baseline" forbids.
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: privileged

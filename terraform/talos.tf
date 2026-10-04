@@ -86,6 +86,16 @@ locals {
           routes     = [{ gateway = var.gateway }]
         },
       ] : yamlencode(doc)],
+      # Persistent volumes: the whole data disk as one filesystem, mounted at
+      # /var/mnt/local-path-provisioner, where local-path creates volumes.
+      # Incus attaches the root disk first (sda) and the data disk second (sdb).
+      n.data_disk_gb > 0 ? [yamlencode({
+        apiVersion   = "v1alpha1"
+        kind         = "UserVolumeConfig"
+        name         = "local-path-provisioner"
+        volumeType   = "disk"
+        provisioning = { diskSelector = { match = "disk.dev_path == \"/dev/sdb\"" } }
+      })] : [],
       # Node pools (ADR 0004): every worker is labelled with its pool; the
       # always-on pool is also tainted, so only workloads that tolerate it land
       # on the home server. Taints are set at first registration (a kubelet

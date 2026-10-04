@@ -1,5 +1,20 @@
 # One Incus VM per Kubernetes node, on the host and storage pool from
 # terraform.tfvars, attached to the LAN bridge.
+
+# Data disk for persistent volumes. Talos formats it as a user volume mounted
+# at /var/mnt/local-path-provisioner (talos.tf), separate from the system disk.
+resource "incus_storage_volume" "data" {
+  for_each = { for name, n in var.nodes : name => n if n.data_disk_gb > 0 }
+
+  remote       = each.value.host
+  pool         = each.value.storage
+  name         = "${each.key}-data"
+  content_type = "block"
+  config = {
+    size = "${each.value.data_disk_gb}GiB"
+  }
+}
+
 resource "incus_instance" "node" {
   for_each = var.nodes
 
@@ -36,6 +51,18 @@ resource "incus_instance" "node" {
     properties = {
       nictype = "bridged"
       parent  = var.bridge
+    }
+  }
+
+  dynamic "device" {
+    for_each = each.value.data_disk_gb > 0 ? [incus_storage_volume.data[each.key]] : []
+    content {
+      name = "data"
+      type = "disk"
+      properties = {
+        pool   = device.value.pool
+        source = device.value.name
+      }
     }
   }
 

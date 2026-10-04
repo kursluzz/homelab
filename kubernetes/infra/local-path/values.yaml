@@ -1,0 +1,32 @@
+# Talos user volume on every worker's data disk (terraform/talos.tf).
+nodePathMap:
+  - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+    paths:
+      - /var/mnt/local-path-provisioner
+
+storageClass:
+  name: local-path
+  defaultClass: true
+  # Bind when the pod is scheduled, so the volume is created on that node.
+  volumeBindingMode: WaitForFirstConsumer
+  reclaimPolicy: Delete
+
+# Cluster essential (ADR 0004): volumes for hosted projects must be
+# provisionable while the lab hosts are off. Helper pods are bound to their
+# node by name, so they need no toleration.
+tolerations:
+  - { key: homelab/node-pool, operator: Equal, value: always-on, effect: NoSchedule }
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - { key: homelab/node-pool, operator: In, values: [always-on] }
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
