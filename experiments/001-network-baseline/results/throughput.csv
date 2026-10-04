@@ -1,0 +1,49 @@
+path,client,server,streams,run,mbit_s,retransmits
+host-host saturn-triton,host:saturn,host:triton,1,1,841,0
+host-host saturn-triton,host:saturn,host:triton,1,2,844,0
+host-host saturn-triton,host:saturn,host:triton,1,3,837,0
+host-host saturn-triton,host:saturn,host:triton,4,1,834,0
+host-host saturn-triton,host:saturn,host:triton,4,2,835,0
+host-host saturn-triton,host:saturn,host:triton,4,3,836,0
+host-host triton-orion,host:triton,host:orion,1,1,841,0
+host-host triton-orion,host:triton,host:orion,1,2,843,0
+host-host triton-orion,host:triton,host:orion,1,3,841,0
+host-host triton-orion,host:triton,host:orion,4,1,837,0
+host-host triton-orion,host:triton,host:orion,4,2,838,0
+host-host triton-orion,host:triton,host:orion,4,3,842,0
+host-host orion-saturn,host:orion,host:saturn,1,1,841,0
+host-host orion-saturn,host:orion,host:saturn,1,2,836,0
+host-host orion-saturn,host:orion,host:saturn,1,3,839,0
+host-host orion-saturn,host:orion,host:saturn,4,1,834,0
+host-host orion-saturn,host:orion,host:saturn,4,2,835,0
+host-host orion-saturn,host:orion,host:saturn,4,3,842,0
+vm-vm cross-host saturn-triton,vm:saturn:net-a,vm:triton:net-b,1,1,863,360
+vm-vm cross-host saturn-triton,vm:saturn:net-a,vm:triton:net-b,1,2,863,315
+vm-vm cross-host saturn-triton,vm:saturn:net-a,vm:triton:net-b,1,3,862,360
+vm-vm cross-host saturn-triton,vm:saturn:net-a,vm:triton:net-b,4,1,842,1138
+vm-vm cross-host saturn-triton,vm:saturn:net-a,vm:triton:net-b,4,2,851,1156
+vm-vm cross-host saturn-triton,vm:saturn:net-a,vm:triton:net-b,4,3,848,1020
+vm-vm cross-host triton-orion,vm:triton:net-b,vm:orion:net-d,1,1,867,315
+vm-vm cross-host triton-orion,vm:triton:net-b,vm:orion:net-d,1,2,864,360
+vm-vm cross-host triton-orion,vm:triton:net-b,vm:orion:net-d,1,3,868,360
+vm-vm cross-host triton-orion,vm:triton:net-b,vm:orion:net-d,4,1,845,1065
+vm-vm cross-host triton-orion,vm:triton:net-b,vm:orion:net-d,4,2,861,1244
+vm-vm cross-host triton-orion,vm:triton:net-b,vm:orion:net-d,4,3,860,1057
+vm-vm cross-host orion-saturn,vm:orion:net-d,vm:saturn:net-a,1,1,863,360
+vm-vm cross-host orion-saturn,vm:orion:net-d,vm:saturn:net-a,1,2,862,360
+vm-vm cross-host orion-saturn,vm:orion:net-d,vm:saturn:net-a,1,3,863,360
+vm-vm cross-host orion-saturn,vm:orion:net-d,vm:saturn:net-a,4,1,852,1100
+vm-vm cross-host orion-saturn,vm:orion:net-d,vm:saturn:net-a,4,2,858,1256
+vm-vm cross-host orion-saturn,vm:orion:net-d,vm:saturn:net-a,4,3,852,1032
+vm-vm same host (triton),vm:triton:net-b,vm:triton:net-c,1,1,24564,183
+vm-vm same host (triton),vm:triton:net-b,vm:triton:net-c,1,2,24446,0
+vm-vm same host (triton),vm:triton:net-b,vm:triton:net-c,1,3,24469,317
+vm-vm same host (triton),vm:triton:net-b,vm:triton:net-c,4,1,23707,53372
+vm-vm same host (triton),vm:triton:net-b,vm:triton:net-c,4,2,23740,48906
+vm-vm same host (triton),vm:triton:net-b,vm:triton:net-c,4,3,23931,63677
+vm-own host (triton),vm:triton:net-b,host:triton,1,1,34520,0
+vm-own host (triton),vm:triton:net-b,host:triton,1,2,34209,0
+vm-own host (triton),vm:triton:net-b,host:triton,1,3,34378,0
+vm-own host (triton),vm:triton:net-b,host:triton,4,1,30879,0
+vm-own host (triton),vm:triton:net-b,host:triton,4,2,34716,0
+vm-own host (triton),vm:triton:net-b,host:triton,4,3,30586,0

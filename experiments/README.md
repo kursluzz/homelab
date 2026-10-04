@@ -5,7 +5,7 @@ manifests, k6 scripts and screenshots it needs. Copy [`TEMPLATE.md`](TEMPLATE.md
 
 | #   | Experiment | Result |
 |-----|------------|--------|
-| —   | _none yet_ |        |
+| 001 | [Network baseline: hosts and Incus VMs on the LAN bridge](001-network-baseline/README.md) | Cross-host TCP 835-867 Mbit/s (not 940); bridge + virtio cost no throughput but +0.6 ms RTT; same-host VM to VM 24 Gbit/s |
 
 ## Planned: staged media-processing workload
 

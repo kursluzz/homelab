@@ -1,0 +1,9 @@
+path,client,server,rtt_avg_ms,rtt_max_ms
+host-host saturn-triton,host:saturn,host:triton,0.386,0.769
+host-host triton-orion,host:triton,host:orion,0.623,1.051
+host-host orion-saturn,host:orion,host:saturn,0.570,0.879
+vm-vm cross-host saturn-triton,vm:saturn:net-a,vm:triton:net-b,1.144,1.391
+vm-vm cross-host triton-orion,vm:triton:net-b,vm:orion:net-d,1.261,2.072
+vm-vm cross-host orion-saturn,vm:orion:net-d,vm:saturn:net-a,1.180,1.405
+vm-vm same host (triton),vm:triton:net-b,vm:triton:net-c,0.702,0.959
+vm-own host (triton),vm:triton:net-b,host:triton,0.349,0.592
