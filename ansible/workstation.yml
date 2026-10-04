@@ -6,3 +6,4 @@
   become: true
   roles:
     - incus_client
+    - cluster_tools

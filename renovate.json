@@ -11,6 +11,14 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\w+: \"?(?<currentValue>[^\"\\s]+)\"?"
       ]
+    },
+    {
+      "description": "Versions in Terraform variable files marked with a '# renovate:' comment",
+      "customType": "regex",
+      "fileMatch": ["^terraform/.+\\.tfvars$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\w+\\s*=\\s*\"(?<currentValue>[^\"]+)\""
+      ]
     }
   ]
 }

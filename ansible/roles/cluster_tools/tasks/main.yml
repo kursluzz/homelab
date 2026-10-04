@@ -1,0 +1,32 @@
+# Terraform from HashiCorp's apt repository; talosctl and kubectl as pinned
+# static binaries in /usr/local/bin.
+
+- name: Add the HashiCorp apt repository
+  ansible.builtin.deb822_repository:
+    name: hashicorp
+    types: deb
+    uris: https://apt.releases.hashicorp.com
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: main
+    signed_by: https://apt.releases.hashicorp.com/gpg
+
+- name: Install Terraform
+  ansible.builtin.apt:
+    name: terraform
+    state: present
+    update_cache: true
+
+- name: Install talosctl {{ talosctl_version }}
+  ansible.builtin.get_url:
+    url: https://github.com/siderolabs/talos/releases/download/{{ talosctl_version }}/talosctl-linux-amd64
+    checksum: sha256:https://github.com/siderolabs/talos/releases/download/{{ talosctl_version }}/sha256sum.txt
+    dest: /usr/local/bin/talosctl
+    mode: "0755"
+
+- name: Install kubectl {{ kubectl_version }}
+  ansible.builtin.get_url:
+    url: https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl
+    # The .sha256 file holds only the hash, so it is read directly.
+    checksum: sha256:{{ lookup('ansible.builtin.url', 'https://dl.k8s.io/release/' ~ kubectl_version ~ '/bin/linux/amd64/kubectl.sha256') }}
+    dest: /usr/local/bin/kubectl
+    mode: "0755"

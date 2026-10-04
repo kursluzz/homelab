@@ -3,10 +3,15 @@
 # file refers to them by name. Committed on purpose (private LAN addresses are
 # harmless). Credentials are not kept here; see "Local credentials" in README.md.
 
-cluster_name     = "homelab"
-cluster_endpoint = "192.168.0.40" # virtual IP shared by the control-plane nodes
-gateway          = "192.168.0.1"
-bridge           = "br0" # LAN bridge on every host; VMs get LAN addresses
+cluster_name = "homelab"
+# Upgrades: talosctl upgrade / upgrade-k8s; these values set what new nodes get.
+# renovate: datasource=github-releases depName=siderolabs/talos
+talos_version = "v1.14.2"
+# renovate: datasource=github-releases depName=kubernetes/kubernetes
+kubernetes_version = "v1.37.1"
+cluster_endpoint   = "192.168.0.40" # virtual IP shared by the control-plane nodes
+gateway            = "192.168.0.1"
+bridge             = "br0" # LAN bridge on every host; VMs get LAN addresses
 
 # LAN plan (192.168.0.0/24):
 #   .1         router

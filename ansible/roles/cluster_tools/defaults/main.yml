@@ -1,0 +1,6 @@
+# Keep talosctl on the cluster's Talos release (terraform/terraform.tfvars);
+# kubectl may be one minor version off the cluster.
+# renovate: datasource=github-releases depName=siderolabs/talos
+talosctl_version: "v1.14.2"
+# renovate: datasource=github-releases depName=kubernetes/kubernetes
+kubectl_version: "v1.37.1"
