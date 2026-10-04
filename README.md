@@ -69,7 +69,7 @@ docs/adr/             architecture decision records
 
 - [x] 1. Ansible host setup: Docker, uv, LAN bridge, Incus
 - [x] 2. Terraform + Talos: 3 control-plane nodes (2 on the home server), 4 workers in two node pools: always-on (hosted projects) and lab
-- [ ] 3. Cilium, Argo CD, cert-manager, storage, observability
+- [x] 3. Cilium, Argo CD, cert-manager, storage, observability
 - [ ] 4. CloudNativePG, Strimzi, ClickHouse; Debezium CDC pipeline Postgres → Kafka → ClickHouse
 - [ ] 5. Experiments: KEDA on Kafka lag, k6 load tests, Chaos Mesh failover
 - [ ] 6. Garage S3, Iceberg, Trino, Spark / Flink
