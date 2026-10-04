@@ -1,0 +1,40 @@
+# cert-manager: TLS certificates. An internal CA for LAN services now; Let's
+# Encrypt (DNS-01 via Cloudflare) for public hostnames with roadmap step 9.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.jetstack.io
+      chart: cert-manager
+      targetRevision: v1.21.2
+      helm:
+        releaseName: cert-manager
+        valueFiles:
+          - $values/kubernetes/infra/cert-manager/values.yaml
+    - repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      path: kubernetes/infra/cert-manager/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      # Issuers and certificates need the chart's CRDs and webhook first.
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        maxDuration: 3m
