@@ -16,7 +16,8 @@ stack and `docs/adr/` for the reasoning behind each choice.
   roles) live only in `ansible/inventory.yaml`; VMs, node addresses and sizes
   live only in `terraform/terraform.tfvars`, which refers to hosts by name. Host
   names and the bridge name must match in both. Never hardcode an address or
-  node name anywhere else.
+  node name anywhere else; the one exception is the Cilium LoadBalancer pool
+  (`kubernetes/infra/cilium/resources/`), which must be a cluster manifest.
 - **GitOps only.** Cluster state changes by committing to `kubernetes/` and letting
   Argo CD sync. `kubectl apply` / `helm install` are for debugging and are never
   the way something gets installed.

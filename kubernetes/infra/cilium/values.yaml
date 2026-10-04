@@ -1,0 +1,98 @@
+# Talos (docs.siderolabs.com, "Deploying Cilium"): the host mounts cgroups, the
+# agent gets an explicit capability set, and the API server is reached through
+# KubePrism on every node.
+ipam:
+  mode: kubernetes
+kubeProxyReplacement: true
+k8sServiceHost: localhost
+k8sServicePort: 7445
+securityContext:
+  capabilities:
+    ciliumAgent: [CHOWN, KILL, NET_ADMIN, NET_RAW, IPC_LOCK, SYS_ADMIN, SYS_RESOURCE, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    cleanCiliumState: [NET_ADMIN, SYS_ADMIN, SYS_RESOURCE]
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+# All nodes share one L2 segment (the LAN bridge), so pod traffic is routed
+# natively between nodes instead of being tunnelled (no VXLAN overhead).
+routingMode: native
+autoDirectNodeRoutes: true
+ipv4NativeRoutingCIDR: 10.244.0.0/16
+bpf:
+  masquerade: true
+
+# LoadBalancer Services get an address from the LAN pool and the elected node
+# answers ARP for it (pool and policy in resources/). Leader election for the
+# announcements talks to the API often, hence the higher client rate limit.
+l2announcements:
+  enabled: true
+k8sClientRateLimit:
+  qps: 20
+  burst: 50
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+# One replica, preferably on the always-on pool (ADR 0004); it tolerates every
+# taint by default.
+operator:
+  replicas: 1
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - { key: homelab/node-pool, operator: In, values: [always-on] }
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+hubble:
+  enabled: true
+  # Certificates are issued by an in-cluster CronJob instead of being rendered
+  # into the chart, so Argo CD doesn't see a new diff on every render.
+  tls:
+    auto:
+      method: cronJob
+  relay:
+    enabled: true
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+  ui:
+    enabled: true
+    frontend:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi
+    backend:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          memory: 256Mi
+
+envoy:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 512Mi

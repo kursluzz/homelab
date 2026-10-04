@@ -1,0 +1,22 @@
+# The root Application (app of apps), installed by Terraform with the
+# argocd-apps chart after Argo CD and its CRDs exist (terraform/bootstrap.tf).
+# Every kubernetes/<group>/<component>/application.yaml in the repo becomes an
+# Argo CD Application, including Argo CD's own.
+applications:
+  root:
+    namespace: argocd
+    project: default
+    source:
+      repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      path: kubernetes
+      directory:
+        recurse: true
+        include: "*/*/application.yaml"
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: argocd
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true

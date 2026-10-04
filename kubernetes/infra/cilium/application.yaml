@@ -1,0 +1,40 @@
+# Cilium: CNI, kube-proxy replacement, LoadBalancer IPs over ARP, Hubble.
+# Terraform installs this chart once at bootstrap (terraform/bootstrap.tf reads
+# the version and values from here); Argo CD owns it from then on.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://helm.cilium.io
+      chart: cilium
+      targetRevision: 1.20.2
+      helm:
+        releaseName: cilium
+        valueFiles:
+          - $values/kubernetes/infra/cilium/values.yaml
+    - repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      path: kubernetes/infra/cilium/resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      # The operator creates Cilium's CRDs at runtime, after the first sync.
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        maxDuration: 3m

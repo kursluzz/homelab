@@ -16,7 +16,9 @@ terraform apply
 
 `apply` imports the Talos disk image into each host, creates the VMs, waits for
 Talos, bootstraps etcd on the first control-plane node, and writes
-`~/.talos/config` and `~/.kube/homelab.yaml`.
+`~/.talos/config` and `~/.kube/homelab.yaml`. It then installs Cilium, Argo CD
+and the root Application once (`bootstrap.tf`, ADR 0006); after that Argo CD
+manages everything under `kubernetes/`, including those two charts.
 
 Day-2:
 
