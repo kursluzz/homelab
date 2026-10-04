@@ -1,0 +1,71 @@
+# Same names, Service IP and labels as Talos' CoreDNS, so the kubelets
+# (clusterDNS 10.96.0.10) and anything selecting k8s-app=kube-dns keep working.
+fullnameOverride: coredns
+k8sAppLabelOverride: kube-dns
+service:
+  name: kube-dns
+  clusterIP: 10.96.0.10
+priorityClassName: system-cluster-critical
+
+# Two replicas, only on the always-on worker or a control-plane node (three of
+# those four nodes are on the home server), preferring the always-on worker.
+# With the lab hosts off, at least one replica keeps answering.
+replicaCount: 2
+podDisruptionBudget:
+  minAvailable: 1
+tolerations:
+  - { key: homelab/node-pool, operator: Equal, value: always-on, effect: NoSchedule }
+  - { key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - { key: homelab/node-pool, operator: In, values: [always-on] }
+        - matchExpressions:
+            - { key: node-role.kubernetes.io/control-plane, operator: Exists }
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - { key: homelab/node-pool, operator: In, values: [always-on] }
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 70Mi
+  limits:
+    memory: 170Mi
+
+# The Corefile Talos generates, unchanged.
+servers:
+  - zones:
+      - zone: .
+    port: 53
+    plugins:
+      - name: errors
+      - name: health
+        configBlock: lameduck 5s
+      - name: ready
+      - name: log
+        parameters: .
+        configBlock: class error
+      - name: prometheus
+        parameters: 0.0.0.0:9153
+      - name: kubernetes
+        parameters: cluster.local in-addr.arpa ip6.arpa
+        configBlock: |-
+          pods insecure
+          fallthrough in-addr.arpa ip6.arpa
+          ttl 30
+      - name: forward
+        parameters: . /etc/resolv.conf
+        configBlock: max_concurrent 1000
+      - name: cache
+        parameters: "30"
+        configBlock: |-
+          disable success cluster.local
+          disable denial cluster.local
+      - name: loop
+      - name: reload
+      - name: loadbalance

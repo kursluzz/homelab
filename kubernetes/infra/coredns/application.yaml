@@ -1,0 +1,30 @@
+# CoreDNS, replacing the copy Talos deploys (disabled in terraform/talos.tf)
+# so its placement can be controlled: cluster DNS must keep working while the
+# lab hosts are off (ADR 0004).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: coredns
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://coredns.github.io/helm
+      chart: coredns
+      targetRevision: 1.48.2
+      helm:
+        releaseName: coredns
+        valueFiles:
+          - $values/kubernetes/infra/coredns/values.yaml
+    - repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

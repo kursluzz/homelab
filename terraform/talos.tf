@@ -41,7 +41,8 @@ locals {
   ] : yamlencode(doc)]
 
   # Control-plane nodes: the API virtual IP. Cilium (roadmap step 3) replaces
-  # both the default CNI (flannel) and kube-proxy, so neither is deployed.
+  # both the default CNI (flannel) and kube-proxy, so neither is deployed;
+  # CoreDNS comes from Argo CD.
   controlplane_patches = [for doc in [
     {
       apiVersion = "v1alpha1"
@@ -58,6 +59,13 @@ locals {
       apiVersion = "v1alpha1"
       kind       = "KubeFlannelCNIConfig"
       "$patch"   = "delete"
+    },
+    {
+      # Argo CD deploys CoreDNS instead (kubernetes/infra/coredns), placed on
+      # the always-on pool. Talos leaves the objects it created in place.
+      apiVersion = "v1alpha1"
+      kind       = "KubeCoreDNSConfig"
+      enabled    = false
     },
   ] : yamlencode(doc)]
 
