@@ -1,0 +1,45 @@
+# kube-prometheus-stack: Prometheus, Alertmanager, Grafana, node-exporter,
+# kube-state-metrics. Runs on the lab pool; monitoring pauses while the lab
+# hosts are off.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 91.9.0
+      helm:
+        releaseName: kps
+        valueFiles:
+          - $values/kubernetes/infra/monitoring/values.yaml
+    - repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  # The Grafana chart generates a random admin password on every render (Argo
+  # CD renders without cluster lookups); keep the first one.
+  ignoreDifferences:
+    - kind: Secret
+      name: kps-grafana
+      namespace: monitoring
+      jsonPointers:
+        - /data
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # The CRDs are too large for client-side apply's annotation.
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    # node-exporter needs host networking, host PID and host paths.
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: privileged

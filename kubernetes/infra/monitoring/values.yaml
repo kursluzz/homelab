@@ -1,0 +1,79 @@
+# Talos binds kube-scheduler, kube-controller-manager and etcd metrics to
+# localhost, and kube-proxy is replaced by Cilium: no scrape targets for them
+# yet (follow-up: expose them through the Talos config).
+kubeControllerManager: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeEtcd: { enabled: false }
+kubeProxy: { enabled: false }
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+    windows: false
+
+prometheus:
+  prometheusSpec:
+    nodeSelector: { homelab/node-pool: lab }
+    retention: 15d
+    retentionSize: 45GB
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 50Gi
+    resources:
+      requests: { cpu: 200m, memory: 1Gi }
+      limits: { memory: 4Gi }
+    # Pick up every ServiceMonitor, PodMonitor and rule in the cluster, not
+    # only those labelled for this release.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+
+alertmanager:
+  alertmanagerSpec:
+    nodeSelector: { homelab/node-pool: lab }
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { memory: 256Mi }
+
+prometheusOperator:
+  nodeSelector: { homelab/node-pool: lab }
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+  admissionWebhooks:
+    patch:
+      nodeSelector: { homelab/node-pool: lab }
+
+kube-state-metrics:
+  nodeSelector: { homelab/node-pool: lab }
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+# DaemonSet on every node; the chart's default tolerations cover all taints.
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+grafana:
+  nodeSelector: { homelab/node-pool: lab }
+  service:
+    type: LoadBalancer
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+  sidecar:
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { memory: 128Mi }
