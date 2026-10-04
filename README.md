@@ -14,7 +14,7 @@ else from git.
 
 | Host  | CPU                   | RAM   | Role                                                                 |
 |-------|-----------------------|-------|----------------------------------------------------------------------|
-| home  | Intel i5-7500 (4C/4T) | 20 GB | Always on. Management point (Terraform, Wake-on-LAN), 1 control-plane node, 1 small worker |
+| home  | Intel i5-7500 (4C/4T) | 20 GB | Always on. VPN endpoint, Wake-on-LAN relay, 1 control-plane node, 1 small worker |
 | lab-1 | Intel i5-7500 (4C/4T) | 64 GB | 1 control-plane node, 2 heavy workers, Ollama on the host            |
 | lab-2 | Intel i5-7400 (4C/4T) | 16 GB | 1 control-plane node, 1 worker                                       |
 
@@ -34,6 +34,7 @@ edit those two files.
 | Hypervisor       | Incus on Ubuntu Server (3 standalone hosts)                 | VMs on the existing hosts without a reinstall; one control-plane node per host |
 | LLM inference    | Ollama on lab-1's host, started on demand                   | Near-native CPU inference, sized up by stopping worker VMs |
 | Host config      | Ansible                                                     | Agentless, idempotent configuration of the existing hosts |
+| Remote access    | WireGuard on the home server (planned)                      | Kernel-native VPN, one UDP port forwarded |
 | Provisioning     | Terraform (`lxc/incus`, `siderolabs/talos`)                 | Same workflow as cloud IaC |
 | Kubernetes       | Talos Linux                                                 | Immutable, API-only, no drift |
 | GitOps           | Argo CD (app-of-apps)                                       | Install by pushing to git |
@@ -72,6 +73,7 @@ docs/adr/             architecture decision records
 - [ ] 5. Experiments: KEDA on Kafka lag, k6 load tests, Chaos Mesh failover
 - [ ] 6. Garage S3, Iceberg, Trino, Spark / Flink
 - [ ] 7. Staged media-processing workload: resumable uploads to Garage, queue per stage, KEDA, Temporal / Argo Workflows ([planned experiments](experiments/README.md#planned-staged-media-processing-workload))
+- [ ] 8. WireGuard VPN on the home server: remote access to the hosts, the cluster and its LoadBalancer IPs. Independent of steps 2-7; any time after step 1
 
 ## Experiments
 

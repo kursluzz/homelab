@@ -11,7 +11,7 @@ all:
     nic: enp0s31f6 # onboard NIC on every host; Wake-on-LAN stays on it
     bridge: br0    # LAN bridge the VMs attach to; the bridge keeps the NIC's MAC
   children:
-    # Always on: personal services, management point (Terraform, talosctl, Wake-on-LAN).
+    # Always on: personal services, VPN endpoint, Wake-on-LAN relay.
     home:
       hosts:
         saturn: { ansible_host: 192.168.0.21, mac: "50:9a:4c:2a:9a:07" }

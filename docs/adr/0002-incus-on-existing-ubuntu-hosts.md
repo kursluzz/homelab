@@ -51,8 +51,9 @@ registers each host as an Incus remote. `lxc/incus` creates the VMs, and
 bridge, so VMs get LAN addresses and can reach each other across hosts.
 
 Kubernetes: 3 control-plane nodes, one per host, and 4 workers (2 on lab-1, 1 on
-lab-2, 1 on home). The home server is the management point. It runs Terraform,
-`talosctl` and `kubectl`, and sends Wake-on-LAN to power the lab hosts on. Its
+lab-2, 1 on home). Ansible, Terraform, `talosctl` and `kubectl` run from a
+workstation. The home server is the always-on point: it sends Wake-on-LAN to
+power the lab hosts on, also when the workstation is remote. Its
 VMs are capped at 2 vCPUs each and 10 GB of RAM in total, which leaves headroom
 for its own services.
 

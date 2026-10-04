@@ -4,16 +4,24 @@
 # harmless). Credentials are not kept here; see "Local credentials" in README.md.
 
 cluster_name     = "homelab"
-cluster_endpoint = "192.168.0.50" # virtual IP shared by the control-plane nodes
+cluster_endpoint = "192.168.0.40" # virtual IP shared by the control-plane nodes
 gateway          = "192.168.0.1"
 bridge           = "br0" # LAN bridge on every host; VMs get LAN addresses
 
-# Node addresses (192.168.0.50-69) are outside the router's DHCP pool (.100-.200).
-# Hosts (.21-.23) are DHCP reservations, also outside the pool.
+# LAN plan (192.168.0.0/24):
+#   .1         router
+#   .2-.19     other devices with static addresses
+#   .20-.29    physical hosts (ansible/inventory.yaml; DHCP reservations by MAC)
+#   .30-.39    VMs and containers outside Kubernetes (spare)
+#   .40        Kubernetes API virtual IP
+#   .41-.49    control-plane nodes
+#   .50-.69    workers
+#   .70-.99    LoadBalancer IPs for Services (Cilium LB IPAM)
+#   .100-.200  router DHCP pool
 
 # Host RAM, for the budgets below. Terraform reaches each host through the
 # Incus remote of the same name (~/.config/incus).
-#   saturn: i5-7500 4C/4T. Always on: Immich, file sharing, torrent. Management point.
+#   saturn: i5-7500 4C/4T. Always on: Immich, file sharing, torrent. VPN endpoint.
 #   triton: i5-7500 4C/4T, no GPU. Ollama. Powered on for experiments.
 #   orion:  i5-7400 4C/4T. Powered on for experiments.
 hosts = {
@@ -34,14 +42,14 @@ hosts = {
 # requests/limits, not VM cores, are what keep workloads apart. saturn's VMs
 # get at most 2 vCPUs each so its own services keep CPU headroom.
 nodes = {
-  cp-1 = { host = "triton", role = "controlplane", ip = "192.168.0.51", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
-  cp-2 = { host = "orion", role = "controlplane", ip = "192.168.0.52", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
-  cp-3 = { host = "saturn", role = "controlplane", ip = "192.168.0.53", cores = 2, ram_gb = 4, disk_gb = 40, pool = "nvme" }
+  cp-1 = { host = "triton", role = "controlplane", ip = "192.168.0.41", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
+  cp-2 = { host = "orion", role = "controlplane", ip = "192.168.0.42", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
+  cp-3 = { host = "saturn", role = "controlplane", ip = "192.168.0.43", cores = 2, ram_gb = 4, disk_gb = 40, pool = "nvme" }
 
-  w-1 = { host = "triton", role = "worker", ip = "192.168.0.61", cores = 4, ram_gb = 18, disk_gb = 150, pool = "ssd" }
-  w-2 = { host = "triton", role = "worker", ip = "192.168.0.62", cores = 4, ram_gb = 18, disk_gb = 150, pool = "ssd" }
-  w-3 = { host = "orion", role = "worker", ip = "192.168.0.63", cores = 4, ram_gb = 8, disk_gb = 100, pool = "default" }
-  w-4 = { host = "saturn", role = "worker", ip = "192.168.0.64", cores = 2, ram_gb = 6, disk_gb = 80, pool = "nvme" }
+  w-1 = { host = "triton", role = "worker", ip = "192.168.0.51", cores = 4, ram_gb = 18, disk_gb = 150, pool = "ssd" }
+  w-2 = { host = "triton", role = "worker", ip = "192.168.0.52", cores = 4, ram_gb = 18, disk_gb = 150, pool = "ssd" }
+  w-3 = { host = "orion", role = "worker", ip = "192.168.0.53", cores = 4, ram_gb = 8, disk_gb = 100, pool = "default" }
+  w-4 = { host = "saturn", role = "worker", ip = "192.168.0.54", cores = 2, ram_gb = 6, disk_gb = 80, pool = "nvme" }
 }
 
 # RAM budgets (GB):
