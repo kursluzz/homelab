@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-10-03
 - Supersedes: [0001](0001-proxmox-terraform-talos.md) (hypervisor layer only; Terraform + Talos stay)
+- Amended by: [0004](0004-always-on-node-pool-on-the-home-server.md) (control-plane placement)
 
 ## Context
 

@@ -1,8 +1,10 @@
-# Configures every host. Run from ansible/ (asks for the sudo password):
-#   ansible-playbook site.yml -l orion   # one host
-#   ansible-playbook site.yml            # all hosts
-- name: Base tools on every host
-  hosts: all
+# Configures every server. Run from ansible/ (asks for the servers' sudo
+# password), after workstation.yml:
+#   ansible-playbook site.yml -l orion   # one server
+#   ansible-playbook site.yml            # all servers
+
+- name: Base tools on every server
+  hosts: servers
   become: true
   roles:
     - docker
@@ -11,8 +13,14 @@
 # A network change; one host at a time, and a failure stops the run before the
 # next host.
 - name: LAN bridge for the VMs
-  hosts: all
+  hosts: servers
   become: true
   serial: 1
   roles:
     - bridge
+
+- name: Incus on every server
+  hosts: servers
+  become: true
+  roles:
+    - incus

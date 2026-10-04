@@ -30,31 +30,34 @@ hosts = {
   orion  = { ram_gb = 16 }
 }
 
-# Incus storage pools ("dir" driver on existing ext4 filesystems, no repartitioning):
-#   saturn: "nvme"    = 1 TB NVMe (/mnt/seattle)
-#   triton: "default" = 512 GB NVMe (root), "ssd" = 1 TB SATA SSD (/mnt/monaco);
+# Incus storage pools are defined per host in ansible/inventory.yaml (incus_pools):
+#   saturn: "default" = 1 TB NVMe
+#   triton: "default" = 512 GB NVMe (root), "ssd" = 1 TB SATA SSD;
 #           8 TB HDD (/mnt/dallas) left for S3 / backups
 #   orion:  "default" = 1 TB NVMe (root)
 
-# Kubernetes nodes (VMs). One control-plane node per host: etcd survives the
-# loss of any one host. saturn's VMs are stopped together with the lab.
-# vCPUs are overcommitted on purpose (10 vCPUs on 4 threads on triton); pod
-# requests/limits, not VM cores, are what keep workloads apart. saturn's VMs
-# get at most 2 vCPUs each so its own services keep CPU headroom.
+# Kubernetes nodes (VMs), ADR 0004. Two of the three control-plane nodes are on
+# saturn, so etcd keeps quorum while the lab hosts are off. Workers form two
+# node pools (label + taint): "always-on" on saturn for cluster essentials and
+# hosted projects, "lab" for the data stack and experiments.
+# storage is an Incus storage pool on that host (ansible/inventory.yaml).
+# vCPUs are overcommitted on purpose; pod requests/limits, not VM cores, are
+# what keep workloads apart.
+# saturn's VMs get at most 2 vCPUs each so its own services keep CPU headroom.
 nodes = {
-  cp-1 = { host = "triton", role = "controlplane", ip = "192.168.0.41", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
-  cp-2 = { host = "orion", role = "controlplane", ip = "192.168.0.42", cores = 2, ram_gb = 4, disk_gb = 40, pool = "default" }
-  cp-3 = { host = "saturn", role = "controlplane", ip = "192.168.0.43", cores = 2, ram_gb = 4, disk_gb = 40, pool = "nvme" }
+  cp-1 = { host = "saturn", role = "controlplane", ip = "192.168.0.41", cores = 2, ram_gb = 3, disk_gb = 40, storage = "default" }
+  cp-2 = { host = "saturn", role = "controlplane", ip = "192.168.0.42", cores = 2, ram_gb = 3, disk_gb = 40, storage = "default" }
+  cp-3 = { host = "triton", role = "controlplane", ip = "192.168.0.43", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
 
-  w-1 = { host = "triton", role = "worker", ip = "192.168.0.51", cores = 4, ram_gb = 18, disk_gb = 150, pool = "ssd" }
-  w-2 = { host = "triton", role = "worker", ip = "192.168.0.52", cores = 4, ram_gb = 18, disk_gb = 150, pool = "ssd" }
-  w-3 = { host = "orion", role = "worker", ip = "192.168.0.53", cores = 4, ram_gb = 8, disk_gb = 100, pool = "default" }
-  w-4 = { host = "saturn", role = "worker", ip = "192.168.0.54", cores = 2, ram_gb = 6, disk_gb = 80, pool = "nvme" }
+  w-1 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.51", cores = 4, ram_gb = 18, disk_gb = 150, storage = "ssd" }
+  w-2 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.52", cores = 4, ram_gb = 18, disk_gb = 150, storage = "ssd" }
+  w-3 = { host = "orion", role = "worker", node_pool = "lab", ip = "192.168.0.53", cores = 4, ram_gb = 12, disk_gb = 150, storage = "default" }
+  w-4 = { host = "saturn", role = "worker", node_pool = "always-on", ip = "192.168.0.54", cores = 2, ram_gb = 6, disk_gb = 100, storage = "default" }
 }
 
 # RAM budgets (GB):
-#   saturn: host services ~6 (Immich ML peaks included) + cp-3 4 + w-4 6 = 16 of 20.
-#   triton: host 2 + cp-1 4 + workers 36 + Ollama 16 = 58 of 64.
+#   saturn: host services ~6 (Immich ML peaks included) + cp-1 3 + cp-2 3 + w-4 6 = 18 of 20.
+#   triton: host 2 + cp-3 4 + workers 36 + Ollama 16 = 58 of 64.
 #           Ollama runs on the host (systemd, MemoryMax=16G), not in Incus;
 #           for large models, stop w-1/w-2 and raise MemoryMax.
-#   orion:  host 2 + cp-2 4 + w-3 8 = 14 of 16.
+#   orion:  host 2 + w-3 12 = 14 of 16.

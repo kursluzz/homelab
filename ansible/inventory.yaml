@@ -1,6 +1,7 @@
 # Physical hosts: the only place their addresses and MACs live.
 # VMs, node addresses and sizes are in terraform/terraform.tfvars, which refers
-# to these hosts by name. Host names and the bridge name must match in both files.
+# to these hosts and their Incus storage pools by name. Host names, pool names
+# and the bridge name must match in both files.
 all:
   vars:
     # Ubuntu 26.04 ships sudo-rs as sudo. It wraps a custom prompt in its own
@@ -8,15 +9,38 @@ all:
     # times out. sudo.ws is the classic sudo, installed alongside.
     ansible_become_exe: sudo.ws
     ansible_python_interpreter: /usr/bin/python3
-    nic: enp0s31f6 # onboard NIC on every host; Wake-on-LAN stays on it
-    bridge: br0    # LAN bridge the VMs attach to; the bridge keeps the NIC's MAC
   children:
-    # Always on: personal services, VPN endpoint, Wake-on-LAN relay.
-    home:
+    servers:
+      vars:
+        nic: enp0s31f6 # onboard NIC on every host; Wake-on-LAN stays on it
+        bridge: br0    # LAN bridge the VMs attach to; the bridge keeps the NIC's MAC
+        # Incus storage pools ("dir" driver): name -> directory. An empty
+        # directory means Incus' own location under /var/lib/incus.
+        incus_pools:
+          default: ""
+      children:
+        # Always on: personal services, VPN endpoint, Wake-on-LAN relay.
+        home:
+          hosts:
+            saturn:
+              ansible_host: 192.168.0.21
+              mac: "50:9a:4c:2a:9a:07"
+              incus_pools:
+                default: /mnt/seattle/incus # 1 TB NVMe; the root SSD is small
+        # Powered on over Wake-on-LAN for experiments.
+        lab:
+          hosts:
+            triton:
+              ansible_host: 192.168.0.22
+              mac: "30:9c:23:77:77:85"
+              incus_pools:
+                default: ""            # 512 GB NVMe (root)
+                ssd: /mnt/monaco/incus # 1 TB SATA SSD, worker disks
+            orion:
+              ansible_host: 192.168.0.23
+              mac: "30:9c:23:77:59:58"
+    # The machine Ansible, Terraform and the cluster tools run from.
+    workstation:
       hosts:
-        saturn: { ansible_host: 192.168.0.21, mac: "50:9a:4c:2a:9a:07" }
-    # Powered on over Wake-on-LAN for experiments.
-    lab:
-      hosts:
-        triton: { ansible_host: 192.168.0.22, mac: "30:9c:23:77:77:85" }
-        orion: { ansible_host: 192.168.0.23, mac: "30:9c:23:77:59:58" }
+        orbit:
+          ansible_connection: local

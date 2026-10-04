@@ -1,0 +1,8 @@
+# Tools on the workstation (orbit). A separate playbook because its sudo
+# password differs from the servers'. Run from ansible/ before site.yml:
+#   ansible-playbook workstation.yml
+- name: Tools on the workstation
+  hosts: workstation
+  become: true
+  roles:
+    - incus_client

@@ -1,0 +1,6 @@
+# The incus CLI on the workstation; it reaches every host over HTTPS.
+- name: Install the Incus client
+  ansible.builtin.apt:
+    name: incus-client
+    state: present
+    update_cache: true

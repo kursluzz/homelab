@@ -1,0 +1,10 @@
+# Zabbly's repository: maintained by the Incus project lead, current releases
+# for every Ubuntu LTS. Ubuntu's own incus package lags behind.
+- name: Add the Incus apt repository (Zabbly)
+  ansible.builtin.deb822_repository:
+    name: zabbly-incus-stable
+    types: deb
+    uris: https://pkgs.zabbly.com/incus/stable
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: main
+    signed_by: https://pkgs.zabbly.com/key.asc

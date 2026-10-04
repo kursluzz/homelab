@@ -1,0 +1,99 @@
+# Incus as a standalone server (ADR 0002): storage pools on existing
+# filesystems, no managed network (VMs attach to the LAN bridge), HTTPS API on
+# the LAN address, and the workstation added as a trusted client.
+
+- name: Install Incus
+  ansible.builtin.apt:
+    name: incus
+    state: present
+    update_cache: true
+
+- name: Let the admin user run incus locally without sudo
+  ansible.builtin.user:
+    name: "{{ ansible_facts.env.SUDO_USER }}"
+    groups: incus-admin
+    append: true
+
+- name: Create the storage pool directories
+  ansible.builtin.file:
+    path: "{{ item.value }}"
+    state: directory
+    mode: "0711"
+  loop: "{{ incus_pools | dict2items | rejectattr('value', 'equalto', '') }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: List the storage pools
+  ansible.builtin.command: incus storage list --format csv --columns n
+  register: incus_storage
+  changed_when: false
+
+- name: Create the storage pools
+  ansible.builtin.command: >-
+    incus storage create {{ item.key }} dir
+    {{ ('source=' ~ item.value) if item.value else '' }}
+  loop: "{{ incus_pools | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: item.key not in incus_storage.stdout_lines
+  changed_when: true
+
+- name: List the devices of the default profile
+  ansible.builtin.command: incus profile device list default
+  register: incus_profile_devices
+  changed_when: false
+
+- name: Give the default profile a root disk on the default pool
+  ansible.builtin.command: incus profile device add default root disk path=/ pool=default
+  when: "'root' not in incus_profile_devices.stdout_lines"
+  changed_when: true
+
+- name: Read the HTTPS API address
+  ansible.builtin.command: incus config get core.https_address
+  register: incus_https
+  changed_when: false
+
+- name: Serve the HTTPS API on the LAN address
+  ansible.builtin.command: incus config set core.https_address {{ ansible_host }}:8443
+  when: incus_https.stdout != ansible_host ~ ':8443'
+  changed_when: true
+
+# Trust: the server issues a one-time token, and the workstation redeems it
+# with "incus remote add". The token carries the server's certificate
+# fingerprint, so the client verifies the server without trust-on-first-use.
+- name: Look for the Incus client on the workstation
+  ansible.builtin.shell: command -v incus
+  delegate_to: localhost
+  become: false
+  register: incus_client_check
+  changed_when: false
+  failed_when: false
+
+- name: Stop if the workstation has no Incus client
+  ansible.builtin.fail:
+    msg: The Incus client is missing on the workstation. Run workstation.yml first.
+  when: incus_client_check.rc != 0
+
+- name: List the remotes on the workstation
+  ansible.builtin.command: incus remote list --format csv
+  delegate_to: localhost
+  become: false
+  register: incus_remotes
+  changed_when: false
+
+- name: Add this host as a remote on the workstation
+  when: incus_remotes.stdout_lines | select('match', inventory_hostname ~ ',') | list | length == 0
+  block:
+    - name: Issue a trust token for the workstation
+      ansible.builtin.command: incus config trust add {{ groups['workstation'][0] }}
+      register: incus_token
+      changed_when: true
+
+    # One host at a time: each "incus remote add" rewrites the client's
+    # config.yml, and parallel runs overwrite each other's entries.
+    - name: Redeem the token on the workstation
+      ansible.builtin.command: incus remote add {{ inventory_hostname }} {{ incus_token.stdout_lines | last }}
+      delegate_to: localhost
+      become: false
+      throttle: 1
+      changed_when: true
