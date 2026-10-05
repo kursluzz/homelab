@@ -6,6 +6,7 @@ manifests, k6 scripts and screenshots it needs. Copy [`TEMPLATE.md`](TEMPLATE.md
 | #   | Experiment | Result |
 |-----|------------|--------|
 | 001 | [Network baseline: hosts and Incus VMs on the LAN bridge](001-network-baseline/README.md) | Cross-host TCP 835-867 Mbit/s (not 940); bridge + virtio cost no throughput but +0.6 ms RTT; same-host VM to VM 24 Gbit/s |
+| 002 | [Lab hosts off: what the always-on pool keeps serving](002-lab-off/README.md) | API, DNS and Argo CD 100 % available for 7 min with the lab off; nodes Ready 39 s and Prometheus 75 s after power-on; L2 failover not exercised |
 
 ## Planned: staged media-processing workload
 

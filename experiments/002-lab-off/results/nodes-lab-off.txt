@@ -1,0 +1,7 @@
+cp-1   Ready                         control-plane   5h33m   v1.37.1
+cp-2   Ready                         control-plane   5h33m   v1.37.1
+cp-3   NotReady,SchedulingDisabled   control-plane   5h32m   v1.37.1
+w-1    NotReady,SchedulingDisabled   <none>          5h32m   v1.37.1
+w-2    NotReady,SchedulingDisabled   <none>          5h32m   v1.37.1
+w-3    NotReady,SchedulingDisabled   <none>          5h32m   v1.37.1
+w-4    Ready                         <none>          5h32m   v1.37.1

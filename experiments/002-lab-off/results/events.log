@@ -1,0 +1,13 @@
+21:20:45 lab VMs: triton:cp-3 triton:w-1 triton:w-2 orion:w-3
+21:20:45 probes: api=https://192.168.0.40:6443 argocd=192.168.0.70 grafana=192.168.0.71 etcd=192.168.0.41,192.168.0.42,192.168.0.43 via 192.168.0.41
+21:20:49 baseline 60s
+21:20:49 L2 holders: argocd-argocd-server w-4 monitoring-kps-grafana cp-2
+21:21:50 stopping lab VMs (graceful, like a host power-off)
+21:21:55 lab VMs stopped
+21:22:56 L2 holders (+60s): argocd-argocd-server w-4 monitoring-kps-grafana cp-2
+21:28:56 L2 holders (end of off period): argocd-argocd-server w-4 monitoring-kps-grafana cp-2
+21:28:57 starting lab VMs
+21:29:36 all 7 nodes Ready
+21:30:12 Prometheus ready
+21:30:12 L2 holders (recovered): argocd-argocd-server w-4 monitoring-kps-grafana cp-2
+21:30:42 done
