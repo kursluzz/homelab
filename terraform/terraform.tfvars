@@ -30,13 +30,13 @@ bridge             = "br0" # LAN bridge on every host; VMs get LAN addresses
 #   triton: i5-7500 4C/4T, no GPU. Ollama. Powered on for experiments.
 #   orion:  i5-7400 4C/4T. Powered on for experiments.
 hosts = {
-  saturn = { ram_gb = 20 }
+  saturn = { ram_gb = 48 }
   triton = { ram_gb = 64 }
-  orion  = { ram_gb = 16 }
+  orion  = { ram_gb = 20 }
 }
 
 # Incus storage pools are defined per host in ansible/inventory.yaml (incus_pools):
-#   saturn: "default" = 1 TB NVMe
+#   saturn: "ssd" = 1 TB system SSD
 #   triton: "default" = 512 GB NVMe (root), "ssd" = 1 TB SATA SSD;
 #           8 TB HDD (/mnt/dallas) left for S3 / backups
 #   orion:  "default" = 1 TB NVMe (root)
@@ -51,19 +51,21 @@ hosts = {
 # what keep workloads apart.
 # saturn's VMs get at most 2 vCPUs each so its own services keep CPU headroom.
 nodes = {
-  cp-1 = { host = "saturn", role = "controlplane", ip = "192.168.0.41", cores = 2, ram_gb = 3, disk_gb = 40, storage = "default" }
-  cp-2 = { host = "saturn", role = "controlplane", ip = "192.168.0.42", cores = 2, ram_gb = 3, disk_gb = 40, storage = "default" }
+  cp-1 = { host = "saturn", role = "controlplane", ip = "192.168.0.41", cores = 2, ram_gb = 4, disk_gb = 40, storage = "ssd" }
+  cp-2 = { host = "saturn", role = "controlplane", ip = "192.168.0.42", cores = 2, ram_gb = 4, disk_gb = 40, storage = "ssd" }
   cp-3 = { host = "triton", role = "controlplane", ip = "192.168.0.43", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
 
   w-1 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.51", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "ssd" }
   w-2 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.52", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "ssd" }
   w-3 = { host = "orion", role = "worker", node_pool = "lab", ip = "192.168.0.53", cores = 4, ram_gb = 12, disk_gb = 150, data_disk_gb = 300, storage = "default" }
-  w-4 = { host = "saturn", role = "worker", node_pool = "always-on", ip = "192.168.0.54", cores = 2, ram_gb = 6, disk_gb = 100, data_disk_gb = 100, storage = "default" }
+  w-4 = { host = "saturn", role = "worker", node_pool = "always-on", ip = "192.168.0.54", cores = 2, ram_gb = 10, disk_gb = 100, data_disk_gb = 100, storage = "ssd" }
+  w-5 = { host = "saturn", role = "worker", node_pool = "always-on", ip = "192.168.0.55", cores = 2, ram_gb = 10, disk_gb = 60, data_disk_gb = 150, storage = "ssd" }
 }
 
 # RAM budgets (GB):
-#   saturn: host services ~6 (Immich ML peaks included) + cp-1 3 + cp-2 3 + w-4 6 = 18 of 20.
+#   saturn: host services ~8 (Immich ML peaks included) + Vaja (Docker Compose) 8
+#           + cp-1 4 + cp-2 4 + w-4 10 + w-5 10 = 44 of 48.
 #   triton: host 2 + cp-3 4 + workers 36 + Ollama 16 = 58 of 64.
 #           Ollama runs on the host (systemd, MemoryMax=16G), not in Incus;
 #           for large models, stop w-1/w-2 and raise MemoryMax.
-#   orion:  host 2 + w-3 12 = 14 of 16.
+#   orion:  host 2 + w-3 12 = 14 of 20.

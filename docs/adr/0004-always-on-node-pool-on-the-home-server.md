@@ -67,3 +67,7 @@ NetworkPolicy. There are no separate dev/prod environments.
 - The home server's VMs take 12 of its 20 GB (two control-plane nodes at 3 GB,
   an always-on worker at 6 GB). The always-on worker's size limits how many
   projects it can host.
+  Update 2026-10-06: the home server now has 48 GB and a 1 TB system SSD. Two
+  always-on workers (w-4, w-5) at 10 GB and control-plane nodes at 4 GB take
+  28 GB, with 8 GB kept free for a Docker Compose workload outside the
+  cluster; all its VM disks are on the system SSD.

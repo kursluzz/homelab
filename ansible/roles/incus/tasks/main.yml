@@ -43,8 +43,8 @@
   register: incus_profile_devices
   changed_when: false
 
-- name: Give the default profile a root disk on the default pool
-  ansible.builtin.command: incus profile device add default root disk path=/ pool=default
+- name: Give the default profile a root disk
+  ansible.builtin.command: incus profile device add default root disk path=/ pool={{ incus_default_pool | default('default') }}
   when: "'root' not in incus_profile_devices.stdout_lines"
   changed_when: true
 

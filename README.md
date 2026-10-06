@@ -14,9 +14,9 @@ else from git.
 
 | Host  | CPU                   | RAM   | Role                                                                 |
 |-------|-----------------------|-------|----------------------------------------------------------------------|
-| home  | Intel i5-7500 (4C/4T) | 20 GB | Always on. VPN endpoint, Wake-on-LAN relay, 2 control-plane nodes, always-on worker for hosted projects |
+| home  | Intel i5-7500 (4C/4T) | 48 GB | Always on. VPN endpoint, Wake-on-LAN relay, 2 control-plane nodes, 2 always-on workers for hosted projects; VM disks on its 1 TB system SSD |
 | lab-1 | Intel i5-7500 (4C/4T) | 64 GB | 1 control-plane node, 2 heavy workers (lab pool), Ollama on the host |
-| lab-2 | Intel i5-7400 (4C/4T) | 16 GB | 1 worker (lab pool)                                                  |
+| lab-2 | Intel i5-7400 (4C/4T) | 20 GB | 1 worker (lab pool)                                                  |
 
 All three run Ubuntu Server with Incus; nodes are Talos VMs on a LAN bridge.
 lab-1 and lab-2 are powered on over Wake-on-LAN when the lab is in use; the
@@ -46,7 +46,7 @@ edit those two files.
 | Kafka            | Strimzi (KRaft), Kafka Connect, Debezium, Cruise Control    | |
 | Postgres         | CloudNativePG                                               | |
 | ClickHouse       | Altinity clickhouse-operator + ClickHouse Keeper            | |
-| Big data         | Apache Iceberg, Trino, Spark Operator, Flink Operator       | |
+| Lakehouse / ELT  | Apache Iceberg, Trino, dbt, Spark Operator, Flink Operator  | dbt: versioned, tested SQL models on Trino, run as an Argo Workflows step |
 | Observability    | kube-prometheus-stack, Loki, Tempo, OpenTelemetry Collector | |
 | Scaling / tests  | KEDA, k6 (+ k6-operator), Chaos Mesh                        | |
 | Jobs / workflows | RabbitMQ (cluster operator), Celery, DBOS, Temporal, Argo Workflows (planned) | Long-running staged batch jobs; compared in [experiments](experiments/README.md) |
@@ -72,7 +72,7 @@ docs/adr/             architecture decision records
 - [x] 3. Cilium, Argo CD, cert-manager, storage, observability
 - [ ] 4. CloudNativePG, Strimzi, ClickHouse; Debezium CDC pipeline Postgres → Kafka → ClickHouse
 - [ ] 5. Experiments: KEDA on Kafka lag, k6 load tests, Chaos Mesh failover
-- [ ] 6. Garage S3, Iceberg, Trino, Spark / Flink
+- [ ] 6. Garage S3, Iceberg, Trino, Spark / Flink; batch ELT: ingest to Iceberg → dbt models on Trino → Spark aggregation → ClickHouse, orchestrated by Argo Workflows
 - [ ] 7. Staged media-processing workload: resumable uploads to Garage, queue per stage, KEDA, Temporal / Argo Workflows ([planned experiments](experiments/README.md#planned-staged-media-processing-workload))
 - [ ] 8. WireGuard VPN on the home server: remote access to the hosts, the cluster and its LoadBalancer IPs; Wake-on-LAN relay for the lab hosts. Independent of steps 2-7; any time after step 1
 - [ ] 9. Public projects on `vaja.dev`: one subdomain per project, Cloudflare DNS and Tunnel (no inbound port), routing by hostname through the Cilium Gateway, HTTPS from Cloudflare's edge plus cert-manager with Let's Encrypt (DNS-01) in the cluster

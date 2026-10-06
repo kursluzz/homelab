@@ -26,7 +26,8 @@ all:
               ansible_host: 192.168.0.21
               mac: "50:9a:4c:2a:9a:07"
               incus_pools:
-                default: /mnt/seattle/incus # 1 TB NVMe; the root SSD is small
+                ssd: "" # 1 TB system SSD (Incus' own location under /var/lib/incus)
+              incus_default_pool: ssd
         # Powered on over Wake-on-LAN for experiments.
         lab:
           hosts:
