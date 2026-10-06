@@ -46,7 +46,7 @@ edit those two files.
 | Kafka            | Strimzi (KRaft), Kafka Connect, Debezium, Cruise Control    | |
 | Postgres         | CloudNativePG                                               | |
 | ClickHouse       | Altinity clickhouse-operator + ClickHouse Keeper            | |
-| Lakehouse / ELT  | Apache Iceberg, Trino, dbt, Spark Operator, Flink Operator  | dbt: versioned, tested SQL models on Trino, run as an Argo Workflows step |
+| Big data stack   | Apache Iceberg, Trino, dbt, Spark Operator, Flink Operator  | dbt: versioned, tested SQL models on Trino, run as an Argo Workflows step |
 | Observability    | kube-prometheus-stack, Loki, Tempo, OpenTelemetry Collector | |
 | Scaling / tests  | KEDA, k6 (+ k6-operator), Chaos Mesh                        | |
 | Jobs / workflows | RabbitMQ (cluster operator), Celery, DBOS, Temporal, Argo Workflows (planned) | Long-running staged batch jobs; compared in [experiments](experiments/README.md) |

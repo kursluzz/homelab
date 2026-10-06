@@ -41,8 +41,9 @@ stack and `docs/adr/` for the reasoning behind each choice.
 This repo is public. Write READMEs, ADRs and experiment reports the way an
 engineer documents a platform: requirements, trade-offs, measurements and
 conclusions. Avoid tutorial or diary wording ("practise", "learn", "my first ...").
-State results with numbers, and don't claim a scale the hardware doesn't have
-(no "big data" claims).
+State results with numbers. Name tools by their category freely (e.g. the big
+data stack: Spark, Flink, Iceberg, Trino); don't claim data volumes or
+throughput the hardware can't deliver.
 
 ## Decisions and experiments
 
