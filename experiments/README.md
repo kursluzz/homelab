@@ -30,3 +30,20 @@ Numbers are assigned when an experiment starts.
 | Batch size and sampling rate | How do inference batch size and frames-per-second sampled trade throughput against cost? | Frames/s per core vs batch size; total job time vs sampling rate |
 | Tracing through queues | Can one job be followed as one trace across HTTP, queues and workers, and can a stuck job be alerted on? | OpenTelemetry context in message headers → Tempo; Prometheus alert on job age vs deadline, time to detect a stuck job |
 
+## Planned: multi-tenant batch ingestion
+
+A daily batch pipeline used as a second test workload (roadmap step 11): several
+public API sources per tenant, synthetic tenants, raw responses kept in Garage,
+canonical per-tenant, per-day Iceberg partitions queried through Trino and
+ClickHouse, orchestrated by Argo Workflows. Volumes are lab-scale; results are
+reported per core and per GB.
+
+| Experiment | Question it answers | Measure |
+|------------|---------------------|---------|
+| Idempotent re-runs and restatements | Is re-running a day, or re-pulling a restatement window with changed values, safe? Partition overwrite vs `MERGE INTO` on Iceberg | Duplicate and missing rows after N re-runs, run time and files written per approach, snapshot count and compaction need |
+| Backfill next to the daily run | Can a one-year backfill for a new tenant run without breaking the other tenants' daily deadline? | Daily-run completion time with and without a backfill; effect of Argo priorities, semaphores and ResourceQuotas |
+| Per-source rate limits across tenants | How should concurrency be capped when many tenants call the same rate-limited API? | HTTP 429s, total extraction time: Argo semaphore per source vs a shared token bucket in Redis |
+| Crash mid-workflow | What is visible when a step dies halfway through a write, and what does a retry re-do? | Partial data visible to readers (Iceberg atomic commits vs plain Parquet), work repeated by a retry from the failed node (Chaos Mesh pod kill) |
+| Data-quality gates | Which checks catch which faults: an empty pull reported as success, a duplicated day, a timezone or currency shift, a renamed key? | Faults caught per check (dbt tests, source freshness, row-count and total reconciliation), time from fault to alert |
+| pandas vs Polars vs Dask vs Spark | Where does a single-process DataFrame stop being enough? Same transform: latest version per key, 7-day rolling sum, day-over-day change | Wall time, peak memory and cores used at 1, 10 and 30 GB of Parquet input |
+| Tenant isolation | Can one tenant read another's rows through Trino or ClickHouse, and what does a row policy cost? | Cross-tenant queries refused, query latency with and without row policies |

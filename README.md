@@ -46,7 +46,7 @@ edit those two files.
 | Kafka            | Strimzi (KRaft), Kafka Connect, Debezium, Cruise Control    | |
 | Postgres         | CloudNativePG                                               | |
 | ClickHouse       | Altinity clickhouse-operator + ClickHouse Keeper            | |
-| Big data stack   | Apache Iceberg, Trino, dbt, Spark Operator, Flink Operator  | dbt: versioned, tested SQL models on Trino, run as an Argo Workflows step |
+| Big data stack   | Apache Iceberg, Trino, dbt, Spark Operator, Flink Operator, Dask (Kubernetes operator) | dbt: versioned, tested SQL models on Trino, run as an Argo Workflows step; Dask: parallel pandas/NumPy jobs without a JVM |
 | Observability    | kube-prometheus-stack, Loki, Tempo, OpenTelemetry Collector | |
 | Scaling / tests  | KEDA, k6 (+ k6-operator), Chaos Mesh                        | |
 | Jobs / workflows | RabbitMQ (cluster operator), Celery, DBOS, Temporal, Argo Workflows (planned) | Long-running staged batch jobs; compared in [experiments](experiments/README.md) |
@@ -77,6 +77,7 @@ docs/adr/             architecture decision records
 - [ ] 8. WireGuard VPN on the home server: remote access to the hosts, the cluster and its LoadBalancer IPs; Wake-on-LAN relay for the lab hosts. Independent of steps 2-7; any time after step 1
 - [ ] 9. Public projects on `vaja.dev`: one subdomain per project, Cloudflare DNS and Tunnel (no inbound port), routing by hostname through the Cilium Gateway, HTTPS from Cloudflare's edge plus cert-manager with Let's Encrypt (DNS-01) in the cluster
 - [ ] 10. `math.vaja.dev`: React frontend and an API with WebSockets behind the gateway
+- [ ] 11. Multi-tenant batch ingestion on the lakehouse (after step 6): incremental connectors for several public APIs (e.g. GitHub, Wikimedia pageviews, Open-Meteo) loading per-tenant, per-day Iceberg partitions; a restatement window re-pulled on every run with idempotent partition overwrite; backfills through the same Argo Workflows template (fan-out per tenant and source, per-source concurrency limits, retries from the failed step); data-quality gates (dbt tests, source freshness) with Prometheus alerts and a Grafana freshness dashboard per tenant and source; tenant isolation with namespaces, ResourceQuotas and Trino / ClickHouse row policies; one transform compared in pandas, Polars, Dask and Spark ([planned experiments](experiments/README.md#planned-multi-tenant-batch-ingestion))
 
 ## Experiments
 
