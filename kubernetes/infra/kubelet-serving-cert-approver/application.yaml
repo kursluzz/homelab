@@ -1,0 +1,29 @@
+# Approves the kubelets' serving-certificate requests (CSRs) after checking that
+# the requested IPs belong to the requesting node, so the kubelets serve
+# certificates signed by the cluster CA. metrics-server and kubectl logs/exec
+# can then verify them instead of skipping TLS verification.
+# Runs on the lab pool: certificates renew well before expiry, so a request
+# waiting while the lab is off is harmless.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubelet-serving-cert-approver
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alex1989hu/kubelet-serving-cert-approver.git
+    targetRevision: v0.12.1
+    path: deploy
+    directory:
+      # deploy/ also holds the HA variant and kustomize bases.
+      include: standalone-install.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubelet-serving-cert-approver
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
