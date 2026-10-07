@@ -6,6 +6,8 @@ Cluster infrastructure. Roadmap step 3.
 | `coredns/` | Cluster DNS, replacing Talos' copy so it can be placed | always-on worker and control-plane nodes |
 | `local-path/` | Default StorageClass: node-local volumes on each worker's data disk (`/var/mnt/local-path-provisioner`) | always-on |
 | `cert-manager/` | TLS certificates; internal CA (`homelab-ca` ClusterIssuer) | always-on |
+| `kubelet-serving-cert-approver/` | Approves the kubelets' serving-certificate requests (kubelets run with `serverTLSBootstrap`, `terraform/talos.tf`) | lab |
+| `metrics-server/` | `metrics.k8s.io` for `kubectl top` and the HorizontalPodAutoscaler; verifies kubelet TLS (no `--kubelet-insecure-tls`) | always-on |
 | `monitoring/` | kube-prometheus-stack: Prometheus (15 days), Alertmanager, Grafana on a LoadBalancer IP, node-exporter | lab (node-exporter on every node) |
 
 Cluster essentials (needed while the lab hosts are off) tolerate the
