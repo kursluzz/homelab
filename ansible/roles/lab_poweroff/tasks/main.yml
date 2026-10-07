@@ -1,0 +1,34 @@
+# Lab hosts accept the home server's power-off key (roles/cluster_switch) for
+# one command only, and that command runs without a password.
+
+- name: Allow the power-off command without a password
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/homelab-poweroff
+    content: |
+      # Managed by Ansible (roles/lab_poweroff): the home server's nightly job.
+      {{ ansible_facts.env.SUDO_USER }} ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Accept the home server's key for the power-off command only
+  ansible.builtin.lineinfile:
+    path: "/home/{{ ansible_facts.env.SUDO_USER }}/.ssh/authorized_keys"
+    regexp: "homelab-poweroff$"
+    line: >-
+      command="sudo -n /usr/bin/systemctl poweroff",restrict
+      {{ hostvars[groups['home'][0]].poweroff_pubkey }}
+    create: true
+    owner: "{{ ansible_facts.env.SUDO_USER }}"
+    mode: "0600"
+
+- name: Read root's crontab
+  ansible.builtin.command: crontab -l -u root
+  register: lab_poweroff_crontab
+  changed_when: false
+  failed_when: false
+
+# The nightly power-off now comes from the home server.
+- name: Remove the old local nightly power-off
+  ansible.builtin.shell: crontab -l -u root | grep -v 'systemctl poweroff' | crontab -u root -
+  when: "'systemctl poweroff' in lab_poweroff_crontab.stdout"
+  changed_when: true

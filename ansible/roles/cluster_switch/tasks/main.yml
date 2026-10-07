@@ -1,0 +1,79 @@
+# The cluster switch on the home server (ADR 0007): bin/cluster with its
+# settings, Incus access to every host for root, a key that can only power the
+# lab hosts off, and the nightly job that switches the cluster and the lab off.
+
+- name: Read the cluster name from terraform.tfvars
+  ansible.builtin.set_fact:
+    cluster_name: >-
+      {{ lookup('ansible.builtin.file', playbook_dir ~ '/../terraform/terraform.tfvars')
+         | regex_search('cluster_name *= *"([^"]+)"', '\1') | first }}
+    poweroff_user: "{{ ansible_facts.env.SUDO_USER }}"
+
+- name: Install jq (bin/cluster parses Incus output with it)
+  ansible.builtin.apt:
+    name: jq
+    state: present
+
+- name: Install the switch
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../bin/cluster"
+    dest: /usr/local/bin/cluster
+    mode: "0755"
+
+- name: Create /etc/homelab
+  ansible.builtin.file:
+    path: /etc/homelab
+    state: directory
+    mode: "0755"
+
+- name: Write the switch's settings
+  ansible.builtin.template:
+    src: cluster.env.j2
+    dest: /etc/homelab/cluster.env
+    mode: "0644"
+
+# Power-off key: its public half is accepted by the lab hosts only with a forced
+# command (roles/lab_poweroff), so it can do nothing but power a host off.
+- name: Create the power-off key
+  ansible.builtin.command: ssh-keygen -t ed25519 -N "" -C homelab-poweroff -f /root/.ssh/homelab-poweroff
+  args:
+    creates: /root/.ssh/homelab-poweroff
+
+- name: Read the power-off public key
+  ansible.builtin.slurp:
+    src: /root/.ssh/homelab-poweroff.pub
+  register: cluster_switch_pubkey
+
+- name: Publish the public key for the lab hosts
+  ansible.builtin.set_fact:
+    poweroff_pubkey: "{{ cluster_switch_pubkey.content | b64decode | trim }}"
+
+# Incus remotes for root, named like the hosts: its own daemon over the local
+# socket, the others over HTTPS with a one-time trust token each.
+- name: List root's Incus remotes
+  ansible.builtin.command: incus remote list --format csv
+  register: cluster_switch_remotes
+  changed_when: false
+
+- name: Add the local Incus daemon as a remote
+  ansible.builtin.command: incus remote add {{ inventory_hostname }} unix:///var/lib/incus/unix.socket
+  when: cluster_switch_remotes.stdout_lines | select('match', inventory_hostname ~ ',') | list | length == 0
+  changed_when: true
+
+- name: Add the other hosts as remotes
+  ansible.builtin.include_tasks: remote.yml
+  loop: "{{ groups['servers'] | difference([inventory_hostname]) }}"
+  loop_control:
+    loop_var: remote_host
+  when: cluster_switch_remotes.stdout_lines | select('match', remote_host ~ ',') | list | length == 0
+
+- name: Switch the cluster and the lab hosts off every night at 00:00 UTC
+  ansible.builtin.cron:
+    name: homelab nightly lab shutdown
+    cron_file: homelab-nightly
+    user: root
+    minute: "0"
+    hour: "0"
+    job: >-
+      /usr/local/bin/cluster off >>/var/log/homelab-nightly.log 2>&1;
+      /usr/local/bin/cluster hosts-off >>/var/log/homelab-nightly.log 2>&1

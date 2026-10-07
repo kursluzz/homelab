@@ -65,6 +65,22 @@ experiments/          load / chaos / scaling experiments, with results
 docs/adr/             architecture decision records
 ```
 
+## Operating the cluster
+
+The cluster runs on demand ([ADR 0007](docs/adr/0007-kubernetes-on-demand.md)); `bin/cluster` is the switch:
+
+```bash
+bin/cluster status   # hosts, cluster VMs, nodes, etcd, Argo CD apps
+bin/cluster on       # wake hosts that are off, start control planes then workers, wait until healthy
+bin/cluster off      # stop workers, then control planes; hosts keep their power state
+```
+
+Measured with the hosts already on: `off` 66-75 s; `on` reaches 3/3 healthy
+etcd members in 60 s and all 8 nodes Ready with every Argo CD application
+Synced/Healthy in 102 s. Every night at 00:00 UTC the home server runs
+`cluster off` and powers the lab hosts off (`ansible/roles/cluster_switch`,
+`ansible/roles/lab_poweroff`).
+
 ## Roadmap
 
 - [x] 1. Ansible host setup: Docker, uv, LAN bridge, Incus

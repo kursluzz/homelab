@@ -1,0 +1,9 @@
+- name: Issue a trust token on {{ remote_host }} for the home server's root
+  ansible.builtin.command: incus config trust add {{ inventory_hostname }}-root
+  delegate_to: "{{ remote_host }}"
+  register: cluster_switch_token
+  changed_when: true
+
+- name: Add {{ remote_host }} as a remote for root
+  ansible.builtin.command: incus remote add {{ remote_host }} {{ cluster_switch_token.stdout_lines | last }}
+  changed_when: true

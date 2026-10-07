@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# The cluster's on/off switch (ADR 0007).
+#
+#   cluster status      hosts, cluster VMs, nodes, etcd and Argo CD apps
+#   cluster on          wake hosts that are off, start control planes then
+#                       workers, wait until nodes, etcd and apps are healthy
+#   cluster off         stop workers, then control planes, on every host that
+#                       is up; the hosts keep their power state
+#   cluster hosts-off   power the lab hosts off (the home server's nightly job)
+#
+# Acts only on Incus VMs tagged user.cluster=<cluster name> (terraform/nodes.tf).
+# Settings come from /etc/homelab/cluster.env when it exists (written by
+# Ansible on the home server), otherwise from ansible/inventory.yaml and
+# terraform/terraform.tfvars in this repo.
+set -euo pipefail
+
+ENV_FILE=${CLUSTER_ENV:-/etc/homelab/cluster.env}
+REPO=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+STOP_TIMEOUT=${STOP_TIMEOUT:-180}
+WAKE_TIMEOUT=${WAKE_TIMEOUT:-300}
+READY_TIMEOUT=${READY_TIMEOUT:-900}
+export KUBECONFIG=${KUBECONFIG:-$HOME/.kube/homelab.yaml}
+
+if [ -r "$ENV_FILE" ]; then
+  # CLUSTER, HOSTS, LAB_HOSTS, and per host: MAC_<host>, IP_<host>;
+  # POWEROFF_KEY and POWEROFF_USER for hosts-off.
+  . "$ENV_FILE"
+else
+  inv=$(ansible-inventory -i "$REPO/ansible/inventory.yaml" --list 2>/dev/null)
+  HOSTS=$(jq -r '[.servers.children[] as $g | .[$g].hosts[]] | join(" ")' <<<"$inv")
+  LAB_HOSTS=$(jq -r '.lab.hosts | join(" ")' <<<"$inv")
+  for h in $HOSTS; do
+    declare "MAC_$h=$(jq -r --arg h "$h" '._meta.hostvars[$h].mac' <<<"$inv")"
+    declare "IP_$h=$(jq -r --arg h "$h" '._meta.hostvars[$h].ansible_host' <<<"$inv")"
+  done
+  CLUSTER=$(sed -nE 's/^cluster_name *= *"([^"]+)".*/\1/p' "$REPO/terraform/terraform.tfvars")
+fi
+
+log() { printf '%s %s\n' "$(date +%T)" "$*"; }
+var() { local n="$1_$2"; printf '%s' "${!n:-}"; }
+up() { timeout 8 incus info "$1:" >/dev/null 2>&1; }
+# "<name> <status>" for the cluster VMs on a host, optionally of one role.
+vms() {
+  incus list "$1:" --format json 2>/dev/null | jq -r --arg c "$CLUSTER" --arg r "${2:-}" \
+    '.[] | select(.config["user.cluster"] == $c)
+         | select($r == "" or .config["user.cluster-role"] == $r)
+         | "\(.name) \(.status)"'
+}
+has() { command -v "$1" >/dev/null 2>&1; }
+
+stop_role() { # role: stop all running VMs of that role on every host that is up, in parallel
+  local pids=() h name status
+  for h in $HOSTS; do
+    up "$h" || continue
+    while read -r name status; do
+      [ "$status" = Running ] || continue
+      log "stopping $h:$name"
+      { incus stop "$h:$name" --timeout "$STOP_TIMEOUT" 2>/dev/null || incus stop "$h:$name" --force; } &
+      pids+=($!)
+    done < <(vms "$h" "$1")
+  done
+  [ ${#pids[@]} -eq 0 ] || wait "${pids[@]}"
+}
+
+start_role() {
+  local h name status
+  for h in $HOSTS; do
+    while read -r name status; do
+      [ "$status" = Running ] && continue
+      log "starting $h:$name"; incus start "$h:$name"
+    done < <(vms "$h" "$1")
+  done
+}
+
+wake() { # send Wake-on-LAN to every host that is down, then wait for their Incus API
+  local h mac waiting=()
+  for h in $HOSTS; do
+    up "$h" && continue
+    mac=$(var MAC "$h"); [ -n "$mac" ] || { log "no MAC for $h"; exit 1; }
+    log "waking $h ($mac)"
+    if has wakeonlan; then wakeonlan "$mac" >/dev/null
+    else python3 -c "import socket,sys; m=bytes.fromhex(sys.argv[1].replace(':','')); s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.setsockopt(socket.SOL_SOCKET,socket.SO_BROADCAST,1); s.sendto(b'\xff'*6+m*16,('255.255.255.255',9))" "$mac"
+    fi
+    waiting+=("$h")
+  done
+  for h in "${waiting[@]}"; do
+    local t=$SECONDS
+    until up "$h"; do
+      (( SECONDS - t < WAKE_TIMEOUT )) || { log "$h did not come up within ${WAKE_TIMEOUT}s"; exit 1; }
+      sleep 5
+    done
+    log "$h is up"
+  done
+}
+
+# Probes: the API may still be down, so a failing probe reports "not ready".
+cp_ips() { kubectl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null | tr ' ' ',' || true; }
+etcd_healthy() {
+  local ips; ips=$(cp_ips); [ -n "$ips" ] || { echo 0; return; }
+  { timeout 10 talosctl -e "${ips%%,*}" -n "$ips" etcd status 2>/dev/null || true; } | tail -n +2 | wc -l
+}
+apps_unhealthy() {
+  local out; out=$(kubectl get applications -n argocd --no-headers 2>/dev/null) || { echo unknown; return; }
+  awk '$2!="Synced" || $3!="Healthy"' <<<"$out" | wc -l
+}
+nodes_ready() { { kubectl get nodes --no-headers 2>/dev/null || true; } | awk '$2=="Ready"' | wc -l; }
+
+wait_ready() { # nodes Ready, every etcd member healthy, every Argo CD app Synced/Healthy
+  has kubectl && has talosctl || { log "kubectl/talosctl not found; not waiting for readiness"; return; }
+  local total cps t=$SECONDS nodes=0 etcd=0 apps=1
+  total=$(for h in $HOSTS; do vms "$h"; done | wc -l)
+  cps=$(for h in $HOSTS; do vms "$h" controlplane; done | wc -l)
+  while (( SECONDS - t < READY_TIMEOUT )); do
+    nodes=$(nodes_ready)
+    [ "$nodes" = "$total" ] && [ -z "${T_NODES:-}" ] && { T_NODES=$SECONDS; log "all $nodes nodes Ready"; }
+    etcd=$(etcd_healthy)
+    [ "$etcd" = "$cps" ] && [ -z "${T_ETCD:-}" ] && { T_ETCD=$SECONDS; log "etcd: $etcd/$cps members healthy"; }
+    if [ -n "${T_NODES:-}" ] && [ -n "${T_ETCD:-}" ]; then
+      apps=$(apps_unhealthy)
+      [ "$apps" = 0 ] && { T_APPS=$SECONDS; log "all Argo CD applications Synced/Healthy"; return; }
+    fi
+    sleep 5
+  done
+  log "not ready after ${READY_TIMEOUT}s: nodes $nodes/$total, etcd $etcd/$cps, unhealthy apps $apps"
+  exit 1
+}
+
+status() {
+  local h name status
+  printf '%-8s %-6s %s\n' HOST POWER "CLUSTER VMS"
+  for h in $HOSTS; do
+    if up "$h"; then
+      printf '%-8s %-6s %s\n' "$h" on "$(vms "$h" | awk '{printf "%s:%s  ", $1, tolower($2)}')"
+    else
+      printf '%-8s %-6s %s\n' "$h" off "-"
+    fi
+  done
+  if has kubectl && kubectl get --raw /readyz --request-timeout=5s >/dev/null 2>&1; then
+    echo
+    echo "nodes Ready: $(kubectl get nodes --no-headers | awk '$2=="Ready"' | wc -l)/$(kubectl get nodes --no-headers | wc -l)"
+    has talosctl && echo "etcd healthy: $(etcd_healthy)"
+    echo "Argo CD apps not Synced/Healthy: $(apps_unhealthy)"
+  else
+    echo; echo "Kubernetes API: not reachable"
+  fi
+}
+
+case ${1:-} in
+  status) status ;;
+  on)
+    t0=$SECONDS
+    wake; T_HOSTS=$SECONDS
+    start_role controlplane; start_role worker; T_START=$SECONDS
+    wait_ready
+    log "cluster on: hosts $((T_HOSTS - t0))s, VMs started $((T_START - t0))s, nodes Ready ${T_NODES:+$((T_NODES - t0))s}, etcd ${T_ETCD:+$((T_ETCD - t0))s}, apps ${T_APPS:+$((T_APPS - t0))s}"
+    ;;
+  off)
+    t0=$SECONDS
+    stop_role worker; stop_role controlplane
+    log "cluster off in $((SECONDS - t0))s"
+    ;;
+  hosts-off)
+    : "${POWEROFF_KEY:?set POWEROFF_KEY to the power-off key of the home server}"
+    for h in $LAB_HOSTS; do
+      ip=$(var IP "$h")
+      if ping -c1 -W2 "$ip" >/dev/null 2>&1; then
+        log "powering off $h"
+        ssh -i "$POWEROFF_KEY" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
+          "${POWEROFF_USER:-oleg}@$ip" || true
+      else
+        log "$h is already off"
+      fi
+    done
+    ;;
+  *) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

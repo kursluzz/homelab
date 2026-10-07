@@ -31,8 +31,9 @@ resource "incus_instance" "node" {
     # The cluster is switched on and off as a whole by bin/cluster (ADR 0007):
     # never start with the host, and mark the VM as a cluster node so the
     # switch never touches other instances on the same host.
-    "boot.autostart" = "false"
-    "user.cluster"   = var.cluster_name
+    "boot.autostart"    = "false"
+    "user.cluster"      = var.cluster_name
+    "user.cluster-role" = each.value.role
     # Read by Talos at first boot from the config drive below. Later config
     # changes are applied through the Talos API (cluster.tf).
     "cloud-init.user-data" = data.talos_machine_configuration.node[each.key].machine_configuration

@@ -24,3 +24,17 @@
   become: true
   roles:
     - incus
+
+# The cluster switch and the nightly lab shutdown (ADR 0007). The home server
+# play runs first: the lab hosts need its power-off key.
+- name: Cluster switch and nightly lab shutdown on the home server
+  hosts: home
+  become: true
+  roles:
+    - cluster_switch
+
+- name: Lab hosts accept the home server's power-off key
+  hosts: lab
+  become: true
+  roles:
+    - lab_poweroff
