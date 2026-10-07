@@ -47,8 +47,6 @@ prometheusOperator:
   resources:
     requests: { cpu: 50m, memory: 128Mi }
     limits: { memory: 512Mi }
-  admissionWebhooks:
-    patch:
 
 kube-state-metrics:
   resources:
