@@ -1,6 +1,6 @@
 # 0004. Always-on node pool and the control-plane majority on the home server
 
-- Status: accepted
+- Status: superseded by [0007](0007-kubernetes-on-demand.md)
 - Date: 2026-10-04
 - Amends: [0002](0002-incus-on-existing-ubuntu-hosts.md) (control-plane placement)
 

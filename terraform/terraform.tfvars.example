@@ -35,22 +35,22 @@ hosts = {
 
 # Incus storage pools ("dir" driver on existing filesystems, no repartitioning).
 
-# Kubernetes nodes (VMs), ADR 0004. Two of the three control-plane nodes are on
-# home, so etcd keeps quorum while the lab hosts are off. Workers form two
-# node pools (label + taint): "always-on" on home for cluster essentials and
-# hosted projects, "lab" for the data stack and experiments.
+# Kubernetes nodes (VMs), ADR 0007: one control-plane node per host, so etcd
+# survives the loss of any one host; workers on every host. The cluster runs on
+# demand (bin/cluster on|off). Each node is labelled with its host as
+# topology.kubernetes.io/zone.
 # storage is an Incus storage pool on that host (ansible/inventory.yaml); the
 # root disk and the data disk (persistent volumes, local-path) both use it.
 # vCPUs are overcommitted on purpose; pod requests/limits, not VM cores, are
 # what keep workloads apart.
 nodes = {
   cp-1 = { host = "home", role = "controlplane", ip = "192.168.1.41", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
-  cp-2 = { host = "home", role = "controlplane", ip = "192.168.1.42", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
+  cp-2 = { host = "lab-2", role = "controlplane", ip = "192.168.1.42", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
   cp-3 = { host = "lab-1", role = "controlplane", ip = "192.168.1.43", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
 
-  w-1 = { host = "lab-1", role = "worker", node_pool = "lab", ip = "192.168.1.51", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "default" }
-  w-2 = { host = "lab-1", role = "worker", node_pool = "lab", ip = "192.168.1.52", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "default" }
-  w-3 = { host = "lab-2", role = "worker", node_pool = "lab", ip = "192.168.1.53", cores = 4, ram_gb = 12, disk_gb = 150, data_disk_gb = 300, storage = "default" }
-  w-4 = { host = "home", role = "worker", node_pool = "always-on", ip = "192.168.1.54", cores = 2, ram_gb = 10, disk_gb = 100, data_disk_gb = 100, storage = "default" }
-  w-5 = { host = "home", role = "worker", node_pool = "always-on", ip = "192.168.1.55", cores = 2, ram_gb = 10, disk_gb = 60, data_disk_gb = 150, storage = "default" }
+  w-1 = { host = "lab-1", role = "worker", ip = "192.168.1.51", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "default" }
+  w-2 = { host = "lab-1", role = "worker", ip = "192.168.1.52", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "default" }
+  w-3 = { host = "lab-2", role = "worker", ip = "192.168.1.53", cores = 4, ram_gb = 12, disk_gb = 150, data_disk_gb = 300, storage = "default" }
+  w-4 = { host = "home", role = "worker", ip = "192.168.1.54", cores = 2, ram_gb = 10, disk_gb = 100, data_disk_gb = 100, storage = "default" }
+  w-5 = { host = "home", role = "worker", ip = "192.168.1.55", cores = 2, ram_gb = 10, disk_gb = 60, data_disk_gb = 150, storage = "default" }
 }

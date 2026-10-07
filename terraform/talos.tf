@@ -12,7 +12,6 @@ locals {
   controlplanes   = { for name, n in var.nodes : name => n if n.role == "controlplane" }
   first_cp        = sort(keys(local.controlplanes))[0]
   installer_image = "factory.talos.dev/nocloud-installer/${talos_image_factory_schematic.this.id}:${var.talos_version}"
-  node_pool_label = "homelab/node-pool"
 
   # Every node.
   common_patches = [for doc in [
@@ -104,16 +103,14 @@ locals {
         volumeType   = "disk"
         provisioning = { diskSelector = { match = "disk.dev_path == \"/dev/sdb\"" } }
       })] : [],
-      # Node pools (ADR 0004): every worker is labelled with its pool; the
-      # always-on pool is also tainted, so only workloads that tolerate it land
-      # on the home server. Taints are set at first registration (a kubelet
-      # cannot change its own taints later).
-      n.role == "worker" ? [yamlencode({
+      # The physical host as the node's zone: the standard topology label that
+      # spreading and anti-affinity rules (and Kafka rack awareness) use to
+      # keep replicas on different hosts.
+      [yamlencode({
         apiVersion = "v1alpha1"
         kind       = "KubeNodeConfig"
-        labels     = { (local.node_pool_label) = n.node_pool }
-        taints     = n.node_pool == "always-on" ? { (local.node_pool_label) = "always-on:NoSchedule" } : {}
-      })] : [],
+        labels     = { "topology.kubernetes.io/zone" = n.host }
+      })],
     )
   }
 }

@@ -41,10 +41,10 @@ hosts = {
 #           8 TB HDD (/mnt/dallas) left for S3 / backups
 #   orion:  "default" = 1 TB NVMe (root)
 
-# Kubernetes nodes (VMs), ADR 0004. Two of the three control-plane nodes are on
-# saturn, so etcd keeps quorum while the lab hosts are off. Workers form two
-# node pools (label + taint): "always-on" on saturn for cluster essentials and
-# hosted projects, "lab" for the data stack and experiments.
+# Kubernetes nodes (VMs), ADR 0007: one control-plane node per host, so etcd
+# survives the loss of any one host; workers on every host. The cluster runs on
+# demand (bin/cluster on|off). Each node is labelled with its host as
+# topology.kubernetes.io/zone.
 # storage is an Incus storage pool on that host (ansible/inventory.yaml); the
 # root disk and the data disk (persistent volumes, local-path) both use it.
 # vCPUs are overcommitted on purpose; pod requests/limits, not VM cores, are
@@ -52,20 +52,20 @@ hosts = {
 # saturn's VMs get at most 2 vCPUs each so its own services keep CPU headroom.
 nodes = {
   cp-1 = { host = "saturn", role = "controlplane", ip = "192.168.0.41", cores = 2, ram_gb = 4, disk_gb = 40, storage = "ssd" }
-  cp-2 = { host = "saturn", role = "controlplane", ip = "192.168.0.42", cores = 2, ram_gb = 4, disk_gb = 40, storage = "ssd" }
+  cp-2 = { host = "orion", role = "controlplane", ip = "192.168.0.42", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
   cp-3 = { host = "triton", role = "controlplane", ip = "192.168.0.43", cores = 2, ram_gb = 4, disk_gb = 40, storage = "default" }
 
-  w-1 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.51", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "ssd" }
-  w-2 = { host = "triton", role = "worker", node_pool = "lab", ip = "192.168.0.52", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "ssd" }
-  w-3 = { host = "orion", role = "worker", node_pool = "lab", ip = "192.168.0.53", cores = 4, ram_gb = 12, disk_gb = 150, data_disk_gb = 300, storage = "default" }
-  w-4 = { host = "saturn", role = "worker", node_pool = "always-on", ip = "192.168.0.54", cores = 2, ram_gb = 10, disk_gb = 100, data_disk_gb = 100, storage = "ssd" }
-  w-5 = { host = "saturn", role = "worker", node_pool = "always-on", ip = "192.168.0.55", cores = 2, ram_gb = 10, disk_gb = 60, data_disk_gb = 150, storage = "ssd" }
+  w-1 = { host = "triton", role = "worker", ip = "192.168.0.51", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "ssd" }
+  w-2 = { host = "triton", role = "worker", ip = "192.168.0.52", cores = 4, ram_gb = 18, disk_gb = 150, data_disk_gb = 200, storage = "ssd" }
+  w-3 = { host = "orion", role = "worker", ip = "192.168.0.53", cores = 4, ram_gb = 12, disk_gb = 150, data_disk_gb = 300, storage = "default" }
+  w-4 = { host = "saturn", role = "worker", ip = "192.168.0.54", cores = 2, ram_gb = 10, disk_gb = 100, data_disk_gb = 100, storage = "ssd" }
+  w-5 = { host = "saturn", role = "worker", ip = "192.168.0.55", cores = 2, ram_gb = 10, disk_gb = 60, data_disk_gb = 150, storage = "ssd" }
 }
 
-# RAM budgets (GB):
-#   saturn: host services ~8 (Immich ML peaks included) + Vaja (Docker Compose) 8
-#           + cp-1 4 + cp-2 4 + w-4 10 + w-5 10 = 44 of 48.
+# RAM budgets (GB), with the cluster on:
+#   saturn: host services ~8 (Immich ML peaks included) + Docker Compose projects 8
+#           + cp-1 4 + w-4 10 + w-5 10 = 40 of 48. With the cluster off, its VMs use nothing.
 #   triton: host 2 + cp-3 4 + workers 36 + Ollama 16 = 58 of 64.
 #           Ollama runs on the host (systemd, MemoryMax=16G), not in Incus;
 #           for large models, stop w-1/w-2 and raise MemoryMax.
-#   orion:  host 2 + w-3 12 = 14 of 20.
+#   orion:  host 2 + cp-2 4 + w-3 12 = 18 of 20 (18 GiB usable).

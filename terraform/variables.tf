@@ -34,14 +34,13 @@ variable "hosts" {
 variable "nodes" {
   description = "Kubernetes nodes (VMs), keyed by node name."
   type = map(object({
-    host      = string
-    role      = string # controlplane | worker
-    node_pool = optional(string)
-    ip        = string
-    cores     = number
-    ram_gb    = number
-    disk_gb   = number
-    storage   = string # Incus storage pool on that host
+    host    = string
+    role    = string # controlplane | worker
+    ip      = string
+    cores   = number
+    ram_gb  = number
+    disk_gb = number
+    storage = string # Incus storage pool on that host
     # Second disk for persistent volumes (local-path); workers only.
     data_disk_gb = optional(number, 0)
   }))
@@ -49,10 +48,6 @@ variable "nodes" {
   validation {
     condition     = alltrue([for n in values(var.nodes) : contains(["controlplane", "worker"], n.role)])
     error_message = "role must be controlplane or worker."
-  }
-  validation {
-    condition     = alltrue([for n in values(var.nodes) : n.role == "controlplane" || n.node_pool != null])
-    error_message = "Every worker needs a node_pool."
   }
   validation {
     condition     = length([for n in values(var.nodes) : n if n.role == "controlplane"]) % 2 == 1

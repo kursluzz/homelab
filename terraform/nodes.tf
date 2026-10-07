@@ -28,8 +28,11 @@ resource "incus_instance" "node" {
     "limits.memory" = "${each.value.ram_gb}GiB"
     # The vanilla Talos image is not signed for Secure Boot.
     "security.secureboot" = "false"
-    # Start with the host, e.g. after a Wake-on-LAN power-on.
-    "boot.autostart" = "true"
+    # The cluster is switched on and off as a whole by bin/cluster (ADR 0007):
+    # never start with the host, and mark the VM as a cluster node so the
+    # switch never touches other instances on the same host.
+    "boot.autostart" = "false"
+    "user.cluster"   = var.cluster_name
     # Read by Talos at first boot from the config drive below. Later config
     # changes are applied through the Talos API (cluster.tf).
     "cloud-init.user-data" = data.talos_machine_configuration.node[each.key].machine_configuration
@@ -77,8 +80,9 @@ resource "incus_instance" "node" {
   }
 
   # A node is never re-imaged or re-seeded: Talos upgrades go through
-  # "talosctl upgrade", config changes through the Talos API.
+  # "talosctl upgrade", config changes through the Talos API. Whether it runs
+  # is up to bin/cluster, so an apply never switches the cluster on or off.
   lifecycle {
-    ignore_changes = [image, config["cloud-init.user-data"]]
+    ignore_changes = [image, config["cloud-init.user-data"], running]
   }
 }

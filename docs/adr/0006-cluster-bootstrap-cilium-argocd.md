@@ -45,7 +45,7 @@ Cilium settings:
 - Gateway API is not enabled yet; it needs its CRDs before Cilium starts and
   is added with the public-access work (roadmap step 9).
 
-Argo CD and Cilium's operator run on the always-on pool (ADR 0004).
+Argo CD and Cilium's operator run on the always-on pool (ADR 0004; since ADR 0007, default scheduling).
 
 ## Consequences
 
