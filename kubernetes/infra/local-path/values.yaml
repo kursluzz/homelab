@@ -11,19 +11,6 @@ storageClass:
   volumeBindingMode: WaitForFirstConsumer
   reclaimPolicy: Delete
 
-# Cluster essential (ADR 0004): volumes for hosted projects must be
-# provisionable while the lab hosts are off. Helper pods are bound to their
-# node by name, so they need no toleration.
-tolerations:
-  - { key: homelab/node-pool, operator: Equal, value: always-on, effect: NoSchedule }
-affinity:
-  nodeAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        preference:
-          matchExpressions:
-            - { key: homelab/node-pool, operator: In, values: [always-on] }
-
 resources:
   requests:
     cpu: 10m

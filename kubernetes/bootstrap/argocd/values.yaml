@@ -1,15 +1,3 @@
-# Cluster essential (ADR 0004): runs on the always-on pool, so GitOps keeps
-# working while the lab hosts are off.
-global:
-  tolerations:
-    - { key: homelab/node-pool, operator: Equal, value: always-on, effect: NoSchedule }
-  affinity:
-    podAntiAffinity: none
-    nodeAffinity:
-      type: soft
-      matchExpressions:
-        - { key: homelab/node-pool, operator: In, values: [always-on] }
-
 configs:
   params:
     # Plain HTTP inside the cluster; TLS terminates at the gateway later.

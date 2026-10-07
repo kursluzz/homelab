@@ -39,17 +39,9 @@ resources:
   limits:
     memory: 1Gi
 
-# One replica, preferably on the always-on pool (ADR 0004); it tolerates every
-# taint by default.
+# One replica is enough for a lab cluster.
 operator:
   replicas: 1
-  affinity:
-    nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          preference:
-            matchExpressions:
-              - { key: homelab/node-pool, operator: In, values: [always-on] }
   resources:
     requests:
       cpu: 50m

@@ -7,28 +7,19 @@ service:
   clusterIP: 10.96.0.10
 priorityClassName: system-cluster-critical
 
-# Two replicas, only on the always-on worker or a control-plane node (three of
-# those four nodes are on the home server), preferring the always-on worker.
-# With the lab hosts off, at least one replica keeps answering.
+# Two replicas, preferably on different physical hosts (zone = host, set in
+# terraform/talos.tf), so DNS survives the loss of one host.
 replicaCount: 2
 podDisruptionBudget:
   minAvailable: 1
-tolerations:
-  - { key: homelab/node-pool, operator: Equal, value: always-on, effect: NoSchedule }
-  - { key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }
 affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - { key: homelab/node-pool, operator: In, values: [always-on] }
-        - matchExpressions:
-            - { key: node-role.kubernetes.io/control-plane, operator: Exists }
+  podAntiAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
-        preference:
-          matchExpressions:
-            - { key: homelab/node-pool, operator: In, values: [always-on] }
+        podAffinityTerm:
+          topologyKey: topology.kubernetes.io/zone
+          labelSelector:
+            matchLabels: { k8s-app: kube-dns }
 
 resources:
   requests:

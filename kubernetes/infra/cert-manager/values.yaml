@@ -1,38 +1,21 @@
 crds:
   enabled: true
 
-# Cluster essential (ADR 0004): every component runs on the always-on pool,
-# so certificates keep renewing while the lab hosts are off.
-tolerations: &tolerations
-  - { key: homelab/node-pool, operator: Equal, value: always-on, effect: NoSchedule }
-affinity: &affinity
-  nodeAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        preference:
-          matchExpressions:
-            - { key: homelab/node-pool, operator: In, values: [always-on] }
 resources:
   requests: { cpu: 10m, memory: 64Mi }
   limits: { memory: 256Mi }
 
 webhook:
-  tolerations: *tolerations
-  affinity: *affinity
   resources:
     requests: { cpu: 10m, memory: 32Mi }
     limits: { memory: 128Mi }
 
 cainjector:
-  tolerations: *tolerations
-  affinity: *affinity
   resources:
     requests: { cpu: 10m, memory: 64Mi }
     limits: { memory: 256Mi }
 
 startupapicheck:
-  tolerations: *tolerations
-  affinity: *affinity
   resources:
     requests: { cpu: 10m, memory: 32Mi }
     limits: { memory: 64Mi }

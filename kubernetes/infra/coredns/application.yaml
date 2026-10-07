@@ -1,6 +1,5 @@
 # CoreDNS, replacing the copy Talos deploys (disabled in terraform/talos.tf)
-# so its placement can be controlled: cluster DNS must keep working while the
-# lab hosts are off (ADR 0004).
+# so its placement and replicas can be controlled.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
