@@ -1,0 +1,24 @@
+# Cluster essential (ADR 0004): autoscaling of hosted projects needs it while
+# the lab hosts are off.
+tolerations:
+  - { key: homelab/node-pool, operator: Equal, value: always-on, effect: NoSchedule }
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - { key: homelab/node-pool, operator: In, values: [always-on] }
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# Scraped by Prometheus (kube-prometheus-stack picks up every ServiceMonitor).
+metrics:
+  enabled: true
+serviceMonitor:
+  enabled: true

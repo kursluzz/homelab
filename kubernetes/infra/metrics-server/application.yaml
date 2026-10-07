@@ -1,0 +1,32 @@
+# metrics-server: current CPU/memory per node and pod for kubectl top and the
+# HorizontalPodAutoscaler (metrics.k8s.io). It verifies the kubelets' serving
+# certificates, which the cluster CA issues (kubelet-serving-cert-approver,
+# serverTLSBootstrap in terraform/talos.tf), so it runs without
+# --kubelet-insecure-tls.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/metrics-server/
+      chart: metrics-server
+      targetRevision: 3.14.0
+      helm:
+        releaseName: metrics-server
+        valueFiles:
+          - $values/kubernetes/infra/metrics-server/values.yaml
+    - repoURL: https://github.com/kursluzz/homelab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
