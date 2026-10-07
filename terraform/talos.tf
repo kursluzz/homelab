@@ -29,6 +29,14 @@ locals {
       nameservers = [{ address = var.gateway }]
     },
     {
+      # Kubelets request their serving certificates from the cluster CA (CSRs
+      # approved by kubelet-serving-cert-approver), so metrics-server and
+      # kubectl logs/exec can verify them instead of skipping TLS checks.
+      apiVersion = "v1alpha1"
+      kind       = "KubeletConfig"
+      config     = { serverTLSBootstrap = true }
+    },
+    {
       # Used by "talosctl upgrade"; the first boot uses the disk image.
       apiVersion = "v1alpha1"
       kind       = "UnattendedInstallConfig"
