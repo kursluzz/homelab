@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# WireGuard clients of the home server's VPN (ADR 0008).
+#
+#   vpn-peer key <name>           create the peer's key pair once; prints the
+#                                 public key for ansible/inventory.yaml
+#   vpn-peer config <name> [--qr] write the peer's client config; --qr also
+#                                 shows it as a QR code image for the mobile app
+#
+# Private keys and client configs stay in ~/Dropbox/homelab/system_configs/
+# wireguard/. Tunnel settings and peers come from ansible/inventory.yaml, the
+# endpoint (public IP) from VPN_ENDPOINT in .env, which is never committed.
+set -euo pipefail
+
+REPO=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+STORE=${VPN_PEER_STORE:-$HOME/Dropbox/homelab/system_configs/wireguard}
+cmd=${1:-}; name=${2:-}
+[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+umask 077; mkdir -p "$STORE"
+
+case $cmd in
+  key)
+    if [ ! -s "$STORE/$name.key" ]; then
+      python3 - "$STORE/$name" <<'EOF'
+import base64, sys
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+k = X25519PrivateKey.generate()
+raw = lambda b: base64.b64encode(b).decode()
+open(sys.argv[1] + ".key", "w").write(raw(k.private_bytes(
+    serialization.Encoding.Raw, serialization.PrivateFormat.Raw, serialization.NoEncryption())) + "\n")
+open(sys.argv[1] + ".pub", "w").write(raw(k.public_key().public_bytes(
+    serialization.Encoding.Raw, serialization.PublicFormat.Raw)) + "\n")
+EOF
+    fi
+    cat "$STORE/$name.pub"
+    ;;
+  config)
+    [ -s "$STORE/$name.key" ] || { echo "no key for $name: run 'vpn-peer key $name' first"; exit 1; }
+    # shellcheck disable=SC1091
+    set -a; . "$REPO/.env"; set +a
+    : "${VPN_ENDPOINT:?VPN_ENDPOINT missing in .env}"
+    inv=$(ansible-inventory -i "$REPO/ansible/inventory.yaml" --list 2>/dev/null)
+    home=$(jq -r '.home.hosts[0]' <<<"$inv")
+    wg=$(jq -c --arg h "$home" '._meta.hostvars[$h].wireguard' <<<"$inv")
+    address=$(jq -r --arg n "$name" '.peers[$n].address // empty' <<<"$wg")
+    [ -n "$address" ] || { echo "$name is not a peer in ansible/inventory.yaml"; exit 1; }
+    server_ip=$(jq -r --arg h "$home" '._meta.hostvars[$h].ansible_host' <<<"$inv")
+    server_pub=$(ssh -o BatchMode=yes "$server_ip" cat /etc/wireguard/wg0.pub)
+    cat > "$STORE/$name.conf" <<EOF
+[Interface]
+PrivateKey = $(cat "$STORE/$name.key")
+Address = $address/32
+
+[Peer]
+PublicKey = $server_pub
+Endpoint = $VPN_ENDPOINT
+# Only the lab's part of the LAN and the tunnel go through the VPN.
+AllowedIPs = $(jq -r '.client_allowed_ips | join(", ")' <<<"$wg")
+PersistentKeepalive = 25
+EOF
+    echo "wrote $STORE/$name.conf"
+    if [ "${3:-}" = --qr ]; then
+      # A black-on-white image scans reliably (terminal QR codes come out inverted
+      # on dark themes). It holds the private key, so it lives in RAM only and is
+      # deleted after the scan.
+      png=$(mktemp --tmpdir=/dev/shm "vpn-$name-XXXXXX.png")
+      uvx --quiet --from 'qrcode[pil]' qr --output "$png" < "$STORE/$name.conf"
+      xdg-open "$png" >/dev/null 2>&1 &
+      read -rp "Scan the QR code in the WireGuard app, then press Enter to delete it... " _
+      rm -f "$png"
+    fi
+    ;;
+  *) echo "unknown command: $cmd"; exit 1 ;;
+esac

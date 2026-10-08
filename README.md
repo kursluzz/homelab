@@ -34,7 +34,7 @@ edit those two files.
 | Hypervisor       | Incus on Ubuntu Server (3 standalone hosts)                 | VMs on the existing hosts without a reinstall |
 | LLM inference    | Ollama on lab-1's host, started on demand                   | Near-native CPU inference, sized up by stopping worker VMs |
 | Host config      | Ansible                                                     | Agentless, idempotent configuration of the existing hosts |
-| Remote access    | WireGuard on the home server (planned)                      | Kernel-native VPN, one UDP port forwarded |
+| Remote access    | WireGuard on the home server ([ADR 0008](docs/adr/0008-wireguard-vpn-on-the-home-server.md)) | Kernel-native VPN, one UDP port forwarded, split tunnel to the lab |
 | Public access    | Cloudflare DNS + Tunnel, Gateway API, cert-manager / Let's Encrypt (planned) | No open inbound port; one subdomain per project; free TLS |
 | Provisioning     | Terraform (`lxc/incus`, `siderolabs/talos`)                 | Same workflow as cloud IaC |
 | Kubernetes       | Talos Linux                                                 | Immutable, API-only, no drift |
@@ -90,7 +90,7 @@ Synced/Healthy in 102 s. Every night at 00:00 UTC the home server runs
 - [ ] 5. Experiments: KEDA on Kafka lag, k6 load tests, Chaos Mesh failover
 - [ ] 6. Garage S3, Iceberg, Trino, Spark / Flink; batch ELT: ingest to Iceberg → dbt models on Trino → Spark aggregation → ClickHouse, orchestrated by Argo Workflows
 - [ ] 7. Staged media-processing workload: resumable uploads to Garage, queue per stage, KEDA, Temporal / Argo Workflows ([planned experiments](experiments/README.md#planned-staged-media-processing-workload))
-- [ ] 8. WireGuard VPN on the home server: remote access to the hosts, the cluster and its LoadBalancer IPs; Wake-on-LAN relay for the lab hosts. Independent of steps 2-7; any time after step 1
+- [x] 8. WireGuard VPN on the home server: remote access to the hosts, the cluster and its LoadBalancer IPs; Wake-on-LAN relay for the lab hosts. Independent of steps 2-7; any time after step 1
 - [ ] 9. Public projects on `vaja.dev`: Docker Compose on the home server, outside the cluster (ADR 0007); one subdomain per project through a Cloudflare Tunnel (no inbound port), HTTPS at Cloudflare's edge
 - [ ] 10. `math.vaja.dev`: React frontend and an API with WebSockets, on the home server's Docker Compose stack
 - [ ] 11. Multi-tenant batch ingestion on the lakehouse (after step 6): incremental connectors for several public APIs (e.g. GitHub, Wikimedia pageviews, Open-Meteo) loading per-tenant, per-day Iceberg partitions; a restatement window re-pulled on every run with idempotent partition overwrite; backfills through the same Argo Workflows template (fan-out per tenant and source, per-source concurrency limits, retries from the failed step); data-quality gates (dbt tests, source freshness) with Prometheus alerts and a Grafana freshness dashboard per tenant and source; tenant isolation with namespaces, ResourceQuotas and Trino / ClickHouse row policies; one transform compared in pandas, Polars, Dask and Spark ([planned experiments](experiments/README.md#planned-multi-tenant-batch-ingestion))
@@ -107,7 +107,8 @@ gitignored:
 
 | File | Created by | Used by |
 |------|------------|---------|
-| `.env` | Copied from [`.env.example`](.env.example) | Shell, via [direnv](https://direnv.net/) (`dotenv`) or `set -a; . ./.env` |
+| `.env` | Copied from [`.env.example`](.env.example) | Shell, via [direnv](https://direnv.net/) (`dotenv`) or `set -a; . ./.env`; `bin/vpn-peer` (VPN endpoint) |
+| WireGuard client keys and configs (outside the repo) | `bin/vpn-peer key <name>`, then `config <name>` | the laptop's NetworkManager, the phone's WireGuard app |
 | `homelab.age.key` | `age-keygen -o homelab.age.key`; the public key goes into `.sops.yaml` | SOPS, to decrypt `*.sops.yaml` |
 | Terraform state, outside the repo (path set at `terraform init`, see [`terraform/`](terraform/README.md)) | `terraform apply` | Terraform. Holds the Talos cluster CA and keys |
 | `~/.talos/config` | `terraform apply` | `talosctl` (its default location) |

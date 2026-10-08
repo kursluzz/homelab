@@ -1,0 +1,23 @@
+# Managed by Ansible (roles/wireguard), peers from ansible/inventory.yaml.
+[Interface]
+Address = {{ wireguard.address }}
+ListenPort = {{ wireguard.port }}
+# The private key stays in its own file, generated on this host.
+PostUp = wg set %i private-key /etc/wireguard/%i.key
+# Tunnel traffic leaves under this host's LAN address, so LAN hosts reply
+# without a route to the tunnel subnet.
+PostUp = iptables -t nat -A POSTROUTING -s {{ wireguard.address | regex_replace('\.\d+/', '.0/') }} -o {{ bridge }} -j MASQUERADE
+PostDown = iptables -t nat -D POSTROUTING -s {{ wireguard.address | regex_replace('\.\d+/', '.0/') }} -o {{ bridge }} -j MASQUERADE
+# Docker sets the FORWARD policy to DROP; let tunnel traffic through to the LAN
+# and the replies back.
+PostUp = iptables -I DOCKER-USER -i %i -o {{ bridge }} -j ACCEPT
+PostUp = iptables -I DOCKER-USER -i {{ bridge }} -o %i -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+PostDown = iptables -D DOCKER-USER -i %i -o {{ bridge }} -j ACCEPT
+PostDown = iptables -D DOCKER-USER -i {{ bridge }} -o %i -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+{% for name, peer in wireguard.peers.items() %}
+
+[Peer]
+# {{ name }}
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ peer.address }}/32
+{% endfor %}

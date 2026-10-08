@@ -22,13 +22,14 @@ READY_TIMEOUT=${READY_TIMEOUT:-900}
 export KUBECONFIG=${KUBECONFIG:-$HOME/.kube/homelab.yaml}
 
 if [ -r "$ENV_FILE" ]; then
-  # CLUSTER, HOSTS, LAB_HOSTS, and per host: MAC_<host>, IP_<host>;
+  # CLUSTER, HOSTS, LAB_HOSTS, HOME_HOST, and per host: MAC_<host>, IP_<host>;
   # POWEROFF_KEY and POWEROFF_USER for hosts-off.
   . "$ENV_FILE"
 else
   inv=$(ansible-inventory -i "$REPO/ansible/inventory.yaml" --list 2>/dev/null)
   HOSTS=$(jq -r '[.servers.children[] as $g | .[$g].hosts[]] | join(" ")' <<<"$inv")
   LAB_HOSTS=$(jq -r '.lab.hosts | join(" ")' <<<"$inv")
+  HOME_HOST=$(jq -r '.home.hosts[0]' <<<"$inv")
   for h in $HOSTS; do
     declare "MAC_$h=$(jq -r --arg h "$h" '._meta.hostvars[$h].mac' <<<"$inv")"
     declare "IP_$h=$(jq -r --arg h "$h" '._meta.hostvars[$h].ansible_host' <<<"$inv")"
@@ -80,6 +81,11 @@ wake() { # send Wake-on-LAN to every host that is down, then wait for their Incu
     log "waking $h ($mac)"
     if has wakeonlan; then wakeonlan "$mac" >/dev/null
     else python3 -c "import socket,sys; m=bytes.fromhex(sys.argv[1].replace(':','')); s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.setsockopt(socket.SOL_SOCKET,socket.SO_BROADCAST,1); s.sendto(b'\xff'*6+m*16,('255.255.255.255',9))" "$mac"
+    fi
+    # Away from home (over the VPN) a broadcast can't reach the LAN, so the
+    # always-on home server sends the packet from inside it too.
+    if [ -n "${HOME_HOST:-}" ] && [ "$h" != "$HOME_HOST" ] && [ "$(hostname)" != "$HOME_HOST" ]; then
+      ssh -o BatchMode=yes -o ConnectTimeout=5 "$(var IP "$HOME_HOST")" wakeonlan "$mac" >/dev/null 2>&1 || true
     fi
     waiting+=("$h")
   done
@@ -165,7 +171,7 @@ case ${1:-} in
       ip=$(var IP "$h")
       if ping -c1 -W2 "$ip" >/dev/null 2>&1; then
         log "powering off $h"
-        ssh -i "$POWEROFF_KEY" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
+        ssh -T -i "$POWEROFF_KEY" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
           "${POWEROFF_USER:-oleg}@$ip" || true
       else
         log "$h is already off"

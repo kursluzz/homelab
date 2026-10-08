@@ -1,0 +1,71 @@
+# WireGuard VPN server on the home server (ADR 0008): remote access to the
+# lab's part of the LAN. Peers and addresses come from ansible/inventory.yaml.
+
+- name: Install WireGuard tools and wakeonlan (Wake-on-LAN relay for bin/cluster)
+  ansible.builtin.apt:
+    name: [wireguard-tools, wakeonlan]
+    state: present
+
+- name: Generate the server's private key (it never leaves this host)
+  ansible.builtin.shell: umask 077 && wg genkey > /etc/wireguard/wg0.key
+  args:
+    creates: /etc/wireguard/wg0.key
+
+# The public key is readable by everyone: bin/vpn-peer reads it over SSH to
+# write client configs.
+- name: Derive the server's public key
+  ansible.builtin.shell: wg pubkey < /etc/wireguard/wg0.key > /etc/wireguard/wg0.pub
+  args:
+    creates: /etc/wireguard/wg0.pub
+
+- name: Make the public key and its directory readable
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/wireguard, mode: "0755" }
+    - { path: /etc/wireguard/wg0.pub, mode: "0644" }
+
+- name: Keep IP forwarding on (Docker enables it too, but only while it runs)
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-homelab-forwarding.conf
+    content: "net.ipv4.ip_forward = 1\n"
+    mode: "0644"
+  register: wireguard_sysctl
+
+- name: Apply the sysctl setting
+  ansible.builtin.command: sysctl --system
+  when: wireguard_sysctl.changed
+  changed_when: true
+
+- name: Write the server config
+  ansible.builtin.template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/wg0.conf
+    mode: "0600"
+  notify: Restart WireGuard
+
+# The PostUp rules go into Docker's DOCKER-USER chain, which exists only once
+# Docker has started.
+- name: Create the systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/wg-quick@wg0.service.d
+    state: directory
+    mode: "0755"
+
+- name: Start WireGuard after Docker
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/wg-quick@wg0.service.d/after-docker.conf
+    content: |
+      [Unit]
+      After=docker.service network-online.target
+      Wants=network-online.target
+    mode: "0644"
+  notify: Restart WireGuard
+
+- name: Enable and start WireGuard
+  ansible.builtin.systemd_service:
+    name: wg-quick@wg0
+    enabled: true
+    state: started
+    daemon_reload: true

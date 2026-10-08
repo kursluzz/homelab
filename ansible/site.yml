@@ -38,3 +38,10 @@
   become: true
   roles:
     - lab_poweroff
+
+# Remote access (ADR 0008).
+- name: WireGuard VPN on the home server
+  hosts: home
+  become: true
+  roles:
+    - wireguard

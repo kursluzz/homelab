@@ -28,6 +28,22 @@ all:
               incus_pools:
                 ssd: "" # 1 TB system SSD (Incus' own location under /var/lib/incus)
               incus_default_pool: ssd
+              # WireGuard VPN server (ADR 0008). Clients route only the tunnel and
+              # the lab's part of the LAN (.16-.99: hosts, Kubernetes API and
+              # nodes, LoadBalancer IPs), so a remote network that also uses
+              # 192.168.0.0/24 keeps its own router and devices.
+              wireguard:
+                address: 10.250.0.1/24
+                port: 51820
+                client_allowed_ips:
+                  - 10.250.0.0/24
+                  - 192.168.0.16/28
+                  - 192.168.0.32/27
+                  - 192.168.0.64/27
+                  - 192.168.0.96/30
+                peers:
+                  orbit: { address: 10.250.0.2, public_key: "SO4vBPlOsObtw+fFSHF5rMQU0H5YRR0Gw6r/PjslHFQ=" }
+                  phone: { address: 10.250.0.3, public_key: "VEs8ld89x5islLVSX8Kc55Kix4lx08/MO5a5PZ9jrBI=" }
         # Powered on over Wake-on-LAN for experiments.
         lab:
           hosts:
