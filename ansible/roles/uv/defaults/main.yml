@@ -1,2 +1,2 @@
 # renovate: datasource=github-releases depName=astral-sh/uv
-uv_version: "0.12.23"
+uv_version: "0.13.0"
