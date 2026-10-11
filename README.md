@@ -46,7 +46,7 @@ edit those two files.
 | Kafka            | Strimzi (KRaft), Kafka Connect, Debezium, Cruise Control    | |
 | Postgres         | CloudNativePG                                               | |
 | ClickHouse       | Altinity clickhouse-operator + ClickHouse Keeper            | |
-| Big data stack   | Apache Iceberg, Trino, dbt, Spark Operator, Flink Operator, Dask (Kubernetes operator) | dbt: versioned, tested SQL models on Trino, run as an Argo Workflows step; Dask: parallel pandas/NumPy jobs without a JVM |
+| Big data stack   | Apache Iceberg, Trino, dbt, Spark Operator (PySpark jobs), Flink Operator, Dask (Kubernetes operator) | dbt: versioned, tested SQL models on Trino, run as an Argo Workflows step; Dask: parallel pandas/NumPy jobs without a JVM |
 | Observability    | kube-prometheus-stack, Loki, Tempo, OpenTelemetry Collector | |
 | Scaling / tests  | KEDA, k6 (+ k6-operator), Chaos Mesh                        | |
 | Jobs / workflows | RabbitMQ (cluster operator), Celery, DBOS, Temporal, Argo Workflows (planned) | Long-running staged batch jobs; compared in [experiments](experiments/README.md) |
@@ -88,7 +88,7 @@ Synced/Healthy in 102 s. Every night at 00:00 UTC the home server runs
 - [x] 3. Cilium, Argo CD, cert-manager, storage, observability
 - [ ] 4. CloudNativePG, Strimzi, ClickHouse; Debezium CDC pipeline Postgres → Kafka → ClickHouse
 - [ ] 5. Experiments: KEDA on Kafka lag, k6 load tests, Chaos Mesh failover
-- [ ] 6. Garage S3, Iceberg, Trino, Spark / Flink; batch ELT: ingest to Iceberg → dbt models on Trino → Spark aggregation → ClickHouse, orchestrated by Argo Workflows
+- [ ] 6. Garage S3, Iceberg, Trino, Spark (PySpark) / Flink; batch ELT: ingest to Iceberg → dbt models on Trino → PySpark aggregation → ClickHouse, orchestrated by Argo Workflows
 - [ ] 7. Staged media-processing workload: resumable uploads to Garage, queue per stage, KEDA, Temporal / Argo Workflows ([planned experiments](experiments/README.md#planned-staged-media-processing-workload))
 - [x] 8. WireGuard VPN on the home server: remote access to the hosts, the cluster and its LoadBalancer IPs; Wake-on-LAN relay for the lab hosts. Independent of steps 2-7; any time after step 1
 - [ ] 9. Public projects on `vaja.dev`: Docker Compose on the home server, outside the cluster (ADR 0007); one subdomain per project through a Cloudflare Tunnel (no inbound port), HTTPS at Cloudflare's edge
