@@ -64,7 +64,7 @@ resource "helm_release" "argocd_root" {
   name       = "root"
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argocd-apps"
-  version    = "2.0.6"
+  version    = "2.0.7"
   namespace  = local.bootstrap_charts.argocd.namespace
   values     = [file("${local.kubernetes_dir}/bootstrap/root/values.yaml")]
 
