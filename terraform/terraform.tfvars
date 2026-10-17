@@ -6,7 +6,7 @@
 cluster_name = "homelab"
 # Upgrades: talosctl upgrade / upgrade-k8s; these values set what new nodes get.
 # renovate: datasource=github-releases depName=siderolabs/talos
-talos_version = "v1.14.2"
+talos_version = "v1.14.4"
 # renovate: datasource=github-releases depName=kubernetes/kubernetes
 kubernetes_version = "v1.37.1"
 cluster_endpoint   = "192.168.0.40" # virtual IP shared by the control-plane nodes
