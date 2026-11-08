@@ -8,7 +8,7 @@ cluster_name = "homelab"
 # renovate: datasource=github-releases depName=siderolabs/talos
 talos_version = "v1.14.2"
 # renovate: datasource=github-releases depName=kubernetes/kubernetes
-kubernetes_version = "v1.37.1"
+kubernetes_version = "v1.37.2"
 cluster_endpoint   = "192.168.0.40" # virtual IP shared by the control-plane nodes
 gateway            = "192.168.0.1"
 bridge             = "br0" # LAN bridge on every host; VMs get LAN addresses
